@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { CreateAircraftSchema } from "@/lib/schemas";
 import { parseBody, validationError, dbError } from "@/lib/api/helpers";
@@ -35,5 +36,9 @@ export async function POST(request: Request) {
   if (error) {
     return dbError(error.message);
   }
+
+  revalidatePath("/fleet-forecasting");
+  revalidatePath("/dashboard");
+
   return NextResponse.json(data, { status: 201 });
 }

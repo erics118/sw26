@@ -31,7 +31,7 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const isPublic = pathname === "/login";
+  const isPublic = pathname === "/login" || pathname.startsWith("/api/dev/");
 
   // Redirect / to login (or dashboard if logged in)
   if (pathname === "/") {

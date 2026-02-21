@@ -31,7 +31,9 @@ export function useForecasterData() {
   const fetchForecast = useCallback(async (days: Horizon) => {
     setForecastLoading(true);
     try {
-      const res = await fetch(`/api/fleet-forecasting/forecast?days=${days}`);
+      const res = await fetch(`/api/fleet-forecasting/forecast?days=${days}`, {
+        cache: "no-store",
+      });
       const data = (await res.json()) as ForecastSummary;
       setForecastData(data);
     } finally {
@@ -58,8 +60,12 @@ export function useForecasterData() {
     setUtilLoading(true);
     try {
       const [utilRes, recsRes] = await Promise.all([
-        fetch("/api/fleet-forecasting/utilization?days=30"),
-        fetch("/api/fleet-forecasting/recommendations?horizon=7"),
+        fetch("/api/fleet-forecasting/utilization?days=30", {
+          cache: "no-store",
+        }),
+        fetch("/api/fleet-forecasting/recommendations?horizon=7", {
+          cache: "no-store",
+        }),
       ]);
       const [util, recs] = await Promise.all([
         utilRes.json() as Promise<UtilizationSummary>,

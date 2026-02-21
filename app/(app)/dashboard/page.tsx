@@ -202,6 +202,11 @@ export default function DashboardPage() {
       (sum, cat) => sum + (cat.overconstrained_count ?? 0),
       0,
     ) || 0;
+  const totalAircraft = utilizationData?.aircraft?.length ?? 0;
+  const properlyUtilized = Math.max(
+    0,
+    totalAircraft - underutilizedCount - overconstrained,
+  );
   const avgUtil = utilizationData?.by_category?.length
     ? Math.round(
         (utilizationData.by_category.reduce(
@@ -346,6 +351,20 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
+                <span className="text-xs text-zinc-600">Optimal</span>
+                <span className="text-xs font-semibold text-emerald-400">
+                  {properlyUtilized} aircraft
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-emerald-400"
+                  style={{
+                    width: `${totalAircraft > 0 ? Math.min((properlyUtilized / totalAircraft) * 100, 100) : 0}%`,
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-between pt-1">
                 <span className="text-xs text-zinc-600">Underutilized</span>
                 <span className="text-xs font-semibold text-amber-400">
                   {underutilizedCount} aircraft
