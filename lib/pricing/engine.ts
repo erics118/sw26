@@ -1,4 +1,4 @@
-import { distanceNm } from "./geo";
+import { distanceNm } from "@/lib/geo";
 import type { TripLeg } from "@/lib/database.types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -125,19 +125,6 @@ function layoverExceedsThreshold(
 
 function feeForAirport(icao: string): number {
   return FBO_FEES[icao.toUpperCase()] ?? DEFAULT_FBO_FEE;
-}
-
-// ─── Block hours helper (flight time only, no repositioning) ─────────────────
-
-export function calculateBlockHours(
-  legs: TripLeg[],
-  aircraftCategory: string,
-): number {
-  const perf = CATEGORY_PERF[aircraftCategory] ?? CATEGORY_PERF["midsize"]!;
-  return legs.reduce((total, leg) => {
-    const distNm = distanceNm(leg.from_icao, leg.to_icao);
-    return total + distNm / perf.speedKts;
-  }, 0);
 }
 
 // ─── Main engine ─────────────────────────────────────────────────────────────

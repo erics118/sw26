@@ -9,7 +9,6 @@ import { optimizeRoute } from "./optimizer";
 import { fetchWeatherForIcaos } from "./weather";
 import { fetchNotamsForRoute } from "./notam";
 import { computeRiskScore, isInternationalRoute } from "./risk";
-import { buildBoundingBox } from "./airport-db";
 import type { AircraftPerf } from "./performance";
 
 // ─── Aircraft fetch ───────────────────────────────────────────────────────────
@@ -32,16 +31,6 @@ async function fetchAircraft(aircraftId: string): Promise<AircraftPerf> {
   }
 
   return data as AircraftPerf;
-}
-
-// ─── Route bounding box (for TFR filtering) ───────────────────────────────────
-
-function routeBoundingBox(icaos: string[], legs: RoutingInput["legs"]) {
-  // Very rough: build a bbox around the first and last ICAO (only if 2D available)
-  // The optimizer already has the real geometry; this is just for TFR filtering
-  if (legs.length === 0) return undefined;
-  // Delegate to a simple pass-through; TFR filtering is best-effort
-  return undefined; // Enhanced in future when we have lat/lon without a DB call
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────

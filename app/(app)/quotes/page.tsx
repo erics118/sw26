@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import Badge, { statusVariant } from "@/components/ui/Badge";
 import Card from "@/components/ui/Card";
+import { QuoteTable } from "@/components/Quotes/QuoteTable";
+import type { QuoteRow } from "@/components/Quotes/QuoteTable";
 
 const ALL_STATUSES = [
   "new",
@@ -17,17 +18,6 @@ interface PageProps {
   searchParams: Promise<{ status?: string }>;
 }
 
-type QuoteRow = {
-  id: string;
-  status: string;
-  created_at: string;
-  margin_pct: number;
-  currency: string;
-  clients: { name?: string } | null;
-  aircraft: { tail_number?: string; category?: string } | null;
-  trips: { legs?: Array<{ from_icao: string; to_icao: string }> } | null;
-};
-
 export default async function QuotesPage({ searchParams }: PageProps) {
   const { status } = await searchParams;
   const supabase = await createClient();
@@ -35,7 +25,19 @@ export default async function QuotesPage({ searchParams }: PageProps) {
   let query = supabase
     .from("quotes")
     .select(
-      "id, status, created_at, margin_pct, currency, clients(name), aircraft(tail_number, category), trips(legs)",
+      `id, status, created_at, updated_at, version, margin_pct, currency,
+       broker_name, broker_commission_pct, notes, sent_at, confirmed_at,
+       quote_valid_until, chosen_aircraft_category, estimated_total_hours,
+       won_lost_reason, scheduled_departure_time, scheduled_arrival_time,
+       scheduled_total_hours, actual_departure_time, actual_arrival_time,
+       actual_block_hours, actual_reposition_hours, actual_total_hours,
+       delay_reason_code,
+       clients(name), aircraft(tail_number, category), operators(name),
+       trips(legs),
+       quote_costs(subtotal, margin_amount, tax, total, fuel_cost, fbo_fees,
+         repositioning_cost, repositioning_hours, permit_fees,
+         crew_overnight_cost, catering_cost, peak_day_surcharge,
+         operator_quoted_rate)`,
     )
     .order("created_at", { ascending: false });
 
@@ -112,91 +114,7 @@ export default async function QuotesPage({ searchParams }: PageProps) {
             </Link>
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-zinc-800">
-                {[
-                  "ID",
-                  "Client",
-                  "Route",
-                  "Aircraft",
-                  "Status",
-                  "Margin",
-                  "Date",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="px-5 py-3 text-left text-xs font-semibold tracking-wider text-zinc-600 uppercase"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-800/50">
-              {quotes.map((q) => {
-                const trips = q.trips as {
-                  legs?: Array<{ from_icao: string; to_icao: string }>;
-                } | null;
-                const legs = trips?.legs ?? [];
-                const route =
-                  legs.length > 0
-                    ? `${legs[0]?.from_icao ?? "?"} → ${legs[legs.length - 1]?.to_icao ?? "?"}`
-                    : "—";
-                const client = q.clients as { name?: string } | null;
-                const aircraft = q.aircraft as {
-                  tail_number?: string;
-                  category?: string;
-                } | null;
-
-                return (
-                  <tr
-                    key={q.id}
-                    className="group transition-colors hover:bg-zinc-800/30"
-                  >
-                    <td className="px-5 py-3">
-                      <Link
-                        href={`/quotes/${q.id}`}
-                        className="font-mono text-xs text-amber-400 hover:text-amber-300"
-                      >
-                        {q.id.slice(0, 8)}…
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3 text-zinc-300">
-                      {client?.name ?? <span className="text-zinc-600">—</span>}
-                    </td>
-                    <td className="px-5 py-3 font-mono text-xs text-zinc-400">
-                      {route}
-                    </td>
-                    <td className="px-5 py-3 text-xs text-zinc-500">
-                      {aircraft?.tail_number ?? "—"}
-                    </td>
-                    <td className="px-5 py-3">
-                      <Badge
-                        variant={
-                          statusVariant(q.status) as
-                            | "amber"
-                            | "green"
-                            | "red"
-                            | "yellow"
-                            | "blue"
-                            | "zinc"
-                        }
-                      >
-                        {q.status}
-                      </Badge>
-                    </td>
-                    <td className="tabnum px-5 py-3 text-xs text-zinc-500">
-                      {q.margin_pct}%
-                    </td>
-                    <td className="px-5 py-3 text-xs text-zinc-600">
-                      {new Date(q.created_at).toLocaleDateString()}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <QuoteTable quotes={quotes} />
         )}
       </Card>
     </div>
