@@ -276,6 +276,13 @@ export default function FlightMap({
       <MapContainer
         center={[38, -96]}
         zoom={5}
+        minZoom={3}
+        maxZoom={11}
+        worldCopyJump={false}
+        maxBounds={[
+          [-85, -180],
+          [85, 180],
+        ]}
         className="h-full w-full"
         zoomControl={true}
         style={{ background: "hsl(222 30% 5%)" }}
