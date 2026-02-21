@@ -5,7 +5,7 @@ import {
   MapContainer,
   TileLayer,
   Polyline,
-  CircleMarker,
+  Marker,
   Tooltip,
   useMap,
 } from "react-leaflet";
@@ -15,6 +15,22 @@ import { Plane } from "lucide-react";
 
 const NEON_GREEN = "#00e696";
 const LINE_OPTS = { color: NEON_GREEN, weight: 2 };
+
+/** DOM-based circle icons so start/end stay stable during map fly (no SVG glitch) */
+function createRoutePointIcon(kind: "origin" | "dest") {
+  const isOrigin = kind === "origin";
+  const style = isOrigin
+    ? `width:12px;height:12px;border-radius:50%;background:${NEON_GREEN};opacity:0.9;border:1px solid ${NEON_GREEN};`
+    : `width:12px;height:12px;border-radius:50%;background:${NEON_GREEN};opacity:0.15;border:2px dashed ${NEON_GREEN};`;
+  return L.divIcon({
+    html: `<div style="${style}"></div>`,
+    className: "route-point-marker",
+    iconSize: [12, 12],
+    iconAnchor: [6, 6],
+  });
+}
+const ORIGIN_ICON = createRoutePointIcon("origin");
+const DEST_ICON = createRoutePointIcon("dest");
 
 function createAircraftIcon(heading: number, selected: boolean) {
   const size = selected ? 36 : 26;
@@ -148,19 +164,23 @@ export default function FlightMap({
   const selectedFlight = flights.find((f) => f.id === selectedId) ?? null;
 
   const showRoute = selectedFlight?.originCoords && selectedFlight?.destCoords;
-  const traveledPositions =
-    showRoute && selectedFlight
-      ? selectedFlight.trail?.length > 1
-        ? [
-            selectedFlight.originCoords,
-            ...selectedFlight.trail,
-            [selectedFlight.lat, selectedFlight.lon],
-          ]
-        : [
-            selectedFlight.originCoords,
-            [selectedFlight.lat, selectedFlight.lon],
-          ]
-      : null;
+  const traveledPositions = useMemo((): [number, number][] | null => {
+    if (!showRoute || !selectedFlight) return null;
+    return selectedFlight.trail?.length > 1
+      ? [
+          selectedFlight.originCoords,
+          ...selectedFlight.trail,
+          [selectedFlight.lat, selectedFlight.lon],
+        ]
+      : [selectedFlight.originCoords, [selectedFlight.lat, selectedFlight.lon]];
+  }, [showRoute, selectedFlight]);
+  const remainingPositions = useMemo((): [number, number][] | null => {
+    if (!showRoute || !selectedFlight) return null;
+    return [
+      [selectedFlight.lat, selectedFlight.lon],
+      selectedFlight.destCoords,
+    ];
+  }, [showRoute, selectedFlight]);
 
   return (
     <div className="relative h-full w-full">
@@ -205,50 +225,49 @@ export default function FlightMap({
           onHover={setHoveredFlight}
         />
 
-        {showRoute && selectedFlight && traveledPositions && (
-          <>
-            <Polyline
-              positions={traveledPositions as [number, number][]}
-              pathOptions={{ ...LINE_OPTS, opacity: 0.6 }}
-            />
-            <Polyline
-              positions={[
-                [selectedFlight.lat, selectedFlight.lon],
-                selectedFlight.destCoords,
-              ]}
-              pathOptions={{ ...LINE_OPTS, opacity: 0.4, dashArray: "8 12" }}
-            />
-            <CircleMarker
-              center={selectedFlight.originCoords}
-              radius={6}
-              pathOptions={{
-                ...LINE_OPTS,
-                fillColor: NEON_GREEN,
-                fillOpacity: 0.6,
-                opacity: 0.9,
-              }}
-            >
-              <Tooltip permanent direction="bottom" className="airport-tooltip">
-                {selectedFlight.origin}
-              </Tooltip>
-            </CircleMarker>
-            <CircleMarker
-              center={selectedFlight.destCoords}
-              radius={6}
-              pathOptions={{
-                ...LINE_OPTS,
-                fillColor: NEON_GREEN,
-                fillOpacity: 0.1,
-                opacity: 0.6,
-                dashArray: "4 4",
-              }}
-            >
-              <Tooltip permanent direction="bottom" className="airport-tooltip">
-                {selectedFlight.destination}
-              </Tooltip>
-            </CircleMarker>
-          </>
-        )}
+        {showRoute &&
+          selectedFlight &&
+          traveledPositions &&
+          remainingPositions && (
+            <>
+              <Polyline
+                key={`traveled-${selectedId}`}
+                positions={traveledPositions}
+                pathOptions={{ ...LINE_OPTS, opacity: 0.6 }}
+              />
+              <Polyline
+                key={`remaining-${selectedId}`}
+                positions={remainingPositions}
+                pathOptions={{ ...LINE_OPTS, opacity: 0.4, dashArray: "8 12" }}
+              />
+              <Marker
+                key={`origin-${selectedId}`}
+                position={selectedFlight.originCoords}
+                icon={ORIGIN_ICON}
+              >
+                <Tooltip
+                  permanent
+                  direction="bottom"
+                  className="airport-tooltip"
+                >
+                  {selectedFlight.origin}
+                </Tooltip>
+              </Marker>
+              <Marker
+                key={`dest-${selectedId}`}
+                position={selectedFlight.destCoords}
+                icon={DEST_ICON}
+              >
+                <Tooltip
+                  permanent
+                  direction="bottom"
+                  className="airport-tooltip"
+                >
+                  {selectedFlight.destination}
+                </Tooltip>
+              </Marker>
+            </>
+          )}
       </MapContainer>
 
       {hoveredFlight && (

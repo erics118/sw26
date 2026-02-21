@@ -129,6 +129,7 @@ export async function POST(request: Request) {
   // 3. Pick best aircraft: run balanced plan for each, choose lowest cost
   let bestAircraftId: string | null = null;
   let bestCost = Infinity;
+  let firstRouteError: string | null = null;
   for (const ac of aircraftList) {
     try {
       const plan = await computeRoutePlan({
@@ -147,16 +148,18 @@ export async function POST(request: Request) {
         bestCost = cost;
         bestAircraftId = ac.id;
       }
-    } catch {
+    } catch (err) {
+      if (!firstRouteError)
+        firstRouteError = err instanceof Error ? err.message : String(err);
       continue;
     }
   }
 
   if (!bestAircraftId) {
-    return NextResponse.json(
-      { error: "Could not compute a valid route for any aircraft" },
-      { status: 422 },
-    );
+    const message = firstRouteError
+      ? `Could not compute a valid route for any aircraft: ${firstRouteError}`
+      : "Could not compute a valid route for any aircraft";
+    return NextResponse.json({ error: message }, { status: 422 });
   }
 
   const aircraft = aircraftList.find((a) => a.id === bestAircraftId)!;

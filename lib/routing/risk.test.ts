@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { computeRiskScore, isInternationalRoute } from "./risk";
 import type { RiskInput } from "./risk";
-import type { WeatherSummary, NotamAlert, RefuelStop } from "./types";
+import type { WeatherSummary, NotamAlert, RefuelStop, RouteLeg } from "./types";
 
 const makeWeather = (
   overrides: Partial<WeatherSummary> & { icao: string },
@@ -117,6 +117,42 @@ describe("computeRiskScore", () => {
       total_flight_time_hr: 10,
     });
     expect(result.risk_score).toBe(10 + 5);
+  });
+
+  it("adds 4 points when any leg has night departure or arrival (22–06 UTC)", () => {
+    const nightLeg: RouteLeg = {
+      from_icao: "KTEB",
+      to_icao: "KLAX",
+      distance_nm: 2400,
+      flight_time_hr: 5,
+      fuel_burn_gal: 500,
+      fuel_cost_usd: 3750,
+      is_fuel_stop_leg: false,
+      departure_utc: "2026-01-01T23:00:00.000Z",
+      arrival_utc: "2026-01-02T04:00:00.000Z",
+    };
+    const result = computeRiskScore({
+      ...baseInput,
+      route_legs: [nightLeg],
+    });
+    expect(result.risk_score).toBe(10 + 4);
+  });
+
+  it("adds 5 points for turboprop, 3 for light; 0 for midsize/heavy", () => {
+    expect(
+      computeRiskScore({ ...baseInput, aircraft_category: "turboprop" })
+        .risk_score,
+    ).toBe(10 + 5);
+    expect(
+      computeRiskScore({ ...baseInput, aircraft_category: "light" }).risk_score,
+    ).toBe(10 + 3);
+    expect(
+      computeRiskScore({ ...baseInput, aircraft_category: "midsize" })
+        .risk_score,
+    ).toBe(10);
+    expect(
+      computeRiskScore({ ...baseInput, aircraft_category: "heavy" }).risk_score,
+    ).toBe(10);
   });
 
   it("clamps risk_score to 100", () => {

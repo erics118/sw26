@@ -222,7 +222,8 @@ body {
 .leaflet-control-attribution {
   display: none !important;
 }
-.aircraft-marker {
+.aircraft-marker,
+.route-point-marker {
   background: transparent !important;
   border: none !important;
 }

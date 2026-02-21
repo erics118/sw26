@@ -98,12 +98,25 @@ function NewQuotePageContent() {
 
   useEffect(() => {
     async function load() {
+      // Preview flow: load just the specific trip by ID.
+      // Manual flow: load unquoted trips only (left join filter).
+      const tripsQuery = isPreviewFlow
+        ? supabase
+            .from("trips")
+            .select("id, legs, trip_type, pax_adults, created_at")
+            .eq("id", tripIdParam!)
+            .limit(1)
+        : supabase
+            .from("trips")
+            .select(
+              "id, legs, trip_type, pax_adults, created_at, quotes!left(id)",
+            )
+            .is("quotes.id", null)
+            .order("created_at", { ascending: false })
+            .limit(10);
+
       const [{ data: tripsData }, { data: aircraftData }] = await Promise.all([
-        supabase
-          .from("trips")
-          .select("id, legs, trip_type, pax_adults, created_at")
-          .order("created_at", { ascending: false })
-          .limit(20),
+        tripsQuery,
         supabase
           .from("aircraft")
           .select(
@@ -132,7 +145,7 @@ function NewQuotePageContent() {
       setAircraft((aircraftData as unknown as Aircraft[]) ?? []);
     }
     void load();
-  }, [supabase]);
+  }, [supabase, isPreviewFlow, tripIdParam]);
 
   // Preview flow: fetch aircraft + 3 plans when trip_id in URL
   useEffect(() => {
@@ -161,7 +174,6 @@ function NewQuotePageContent() {
   }, [tripIdParam]);
 
   const selectedTrip = trips.find((t) => t.id === selectedTripId);
-  const selectedAircraft = aircraft.find((a) => a.id === selectedAircraftId);
   const previewAircraft = preview?.aircraft;
 
   const tripRoute = selectedTrip
@@ -286,6 +298,64 @@ function NewQuotePageContent() {
         </div>
       ))}
 
+      {/* Row 1: Route options (preview) or mode selector (manual) */}
+      {isPreviewFlow && preview && (
+        <div className="mb-6 grid grid-cols-3 gap-4">
+          {(["cost", "balanced", "time"] as const).map((m) => {
+            const p = preview[m];
+            const isRec = preview.recommendation.mode === m;
+            const isSelected = optimizationMode === m;
+            if (!p) return null;
+            return (
+              <button
+                key={m}
+                onClick={() => setOptimizationMode(m)}
+                className={`rounded-lg border px-4 py-4 text-left transition-colors ${
+                  isSelected
+                    ? "border-amber-400/50 bg-amber-400/5"
+                    : "border-zinc-800 hover:border-zinc-700"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium text-zinc-200 capitalize">
+                    {m}
+                  </span>
+                  {isRec && (
+                    <Badge variant="amber" size="sm">
+                      Recommended
+                    </Badge>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-3 text-xs text-zinc-500">
+                  <span className="tabnum">
+                    ${p.total_fuel_cost_usd.toFixed(0)}
+                  </span>
+                  <span>{formatFlightTime(p.total_flight_time_hr)}</span>
+                  <span>{p.refuel_stops.length} stops</span>
+                  <span
+                    className={
+                      p.risk_score < 30
+                        ? "text-emerald-400"
+                        : p.risk_score < 60
+                          ? "text-amber-400"
+                          : "text-red-400"
+                    }
+                  >
+                    {p.risk_score}/100 risk
+                  </span>
+                </div>
+                {preview.recommendation.comparisons[m] && (
+                  <p className="mt-2 text-xs text-zinc-600">
+                    {preview.recommendation.comparisons[m]}
+                  </p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Row 2: Trip/aircraft/plan detail + sidebar */}
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           {/* Trip */}
@@ -293,9 +363,23 @@ function NewQuotePageContent() {
             <CardHeader>
               <CardTitle>Trip</CardTitle>
             </CardHeader>
-            {trips.length === 0 ? (
+            {isPreviewFlow ? (
+              selectedTrip ? (
+                <div className="rounded-md border border-amber-400/30 bg-amber-400/5 px-4 py-3">
+                  <div className="font-mono text-sm text-amber-400">
+                    {tripRoute}
+                  </div>
+                  <div className="mt-1 text-xs text-zinc-600">
+                    {selectedTrip.pax_adults} pax ·{" "}
+                    {new Date(selectedTrip.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-zinc-600">Loading trip…</p>
+              )
+            ) : trips.length === 0 ? (
               <p className="text-sm text-zinc-600">
-                No trips found.{" "}
+                No unquoted trips found.{" "}
                 <a
                   href="/intake"
                   className="text-amber-400 hover:text-amber-300"
@@ -333,9 +417,6 @@ function NewQuotePageContent() {
                           {t.pax_adults} pax ·{" "}
                           {new Date(t.created_at).toLocaleDateString()}
                         </span>
-                      </div>
-                      <div className="mt-0.5 font-mono text-xs text-zinc-600">
-                        {t.id.slice(0, 8)}…
                       </div>
                     </button>
                   );
@@ -431,95 +512,6 @@ function NewQuotePageContent() {
 
         {/* Right sidebar */}
         <div className="space-y-5">
-          {(selectedTrip || selectedAircraft || previewAircraft) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Selection</CardTitle>
-              </CardHeader>
-              <div className="space-y-2 text-sm">
-                {selectedTrip && (
-                  <div className="flex justify-between">
-                    <span className="text-zinc-600">Route</span>
-                    <span className="font-mono text-xs text-amber-400">
-                      {tripRoute}
-                    </span>
-                  </div>
-                )}
-                {(selectedAircraft || previewAircraft) && (
-                  <div className="flex justify-between">
-                    <span className="text-zinc-600">Aircraft</span>
-                    <span className="font-mono text-zinc-300">
-                      {(selectedAircraft ?? previewAircraft)?.tail_number}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </Card>
-          )}
-
-          {/* Route options — 3 cards when preview flow */}
-          {isPreviewFlow && preview && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Route Options</CardTitle>
-              </CardHeader>
-              <div className="space-y-2">
-                {(["cost", "balanced", "time"] as const).map((m) => {
-                  const p = preview[m];
-                  const isRec = preview.recommendation.mode === m;
-                  const isSelected = optimizationMode === m;
-                  if (!p) return null;
-                  return (
-                    <button
-                      key={m}
-                      onClick={() => setOptimizationMode(m)}
-                      className={`w-full rounded-md border px-3 py-2.5 text-left transition-colors ${
-                        isSelected
-                          ? "border-amber-400/50 bg-amber-400/5"
-                          : "border-zinc-800 hover:border-zinc-700"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-zinc-200 capitalize">
-                          {m}
-                        </span>
-                        {isRec && (
-                          <Badge variant="amber" size="sm">
-                            Recommended
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-2 text-xs text-zinc-500">
-                        <span>${p.total_fuel_cost_usd.toFixed(0)}</span>
-                        <span>{formatFlightTime(p.total_flight_time_hr)}</span>
-                        <span>{p.refuel_stops.length} stops</span>
-                        <span
-                          className={
-                            p.risk_score < 30
-                              ? "text-emerald-400"
-                              : p.risk_score < 60
-                                ? "text-amber-400"
-                                : "text-red-400"
-                          }
-                        >
-                          {p.risk_score}/100 risk
-                        </span>
-                      </div>
-                      {preview.recommendation.comparisons[m] && (
-                        <p className="mt-1.5 text-xs text-zinc-600">
-                          {preview.recommendation.comparisons[m]}
-                        </p>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-2 text-xs text-zinc-600">
-                {preview.recommendation.explanation}
-              </p>
-            </Card>
-          )}
-
           {/* Route Planning — manual flow only */}
           {!isPreviewFlow && (
             <Card>
@@ -597,6 +589,13 @@ function NewQuotePageContent() {
                 </Button>
               </div>
             </Card>
+          )}
+
+          {/* AI recommendation note */}
+          {isPreviewFlow && preview && (
+            <p className="text-xs text-zinc-600">
+              {preview.recommendation.explanation}
+            </p>
           )}
 
           <Card>
