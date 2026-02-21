@@ -54,7 +54,7 @@ export default function NewAircraftPage() {
       }
 
       const aircraft = await res.json();
-      router.push("/aircraft");
+      router.push(`/aircraft/${aircraft.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setIsLoading(false);
