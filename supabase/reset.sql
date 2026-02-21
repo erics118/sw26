@@ -1,17 +1,183 @@
 -- ============================================================
--- Seed data: operators, aircraft, clients, crew, trips, quotes
--- All IDs are stable UUID v4 values — safe to reference in FK chains.
--- Run in Supabase SQL Editor, or use: npm run db:reset (full reset + seed)
+-- FULL DATABASE RESET
+-- Drops all tables, recreates schema, and seeds with stable UUIDs.
+-- Run via: npm run db:reset
+-- WARNING: destroys all existing data.
 -- ============================================================
 
--- Operators
+-- ── Extensions ───────────────────────────────────────────────────────────────
+
+create extension if not exists "uuid-ossp";
+
+-- ── Drop tables (reverse FK order) ───────────────────────────────────────────
+
+drop table if exists audit_logs cascade;
+drop table if exists quote_costs cascade;
+drop table if exists quotes cascade;
+drop table if exists trips cascade;
+drop table if exists crew cascade;
+drop table if exists aircraft cascade;
+drop table if exists clients cascade;
+drop table if exists operators cascade;
+
+-- ── Schema ───────────────────────────────────────────────────────────────────
+
+create table operators (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  name text not null,
+  cert_number text,
+  cert_expiry date,
+  insurance_expiry date,
+  reliability_score numeric(3,1) default 5.0,
+  blacklisted boolean default false,
+  notes text
+);
+
+create table clients (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  name text not null,
+  company text,
+  email text,
+  phone text,
+  nationality text,
+  notes text,
+  risk_flag boolean default false,
+  vip boolean default false
+);
+
+create table aircraft (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  tail_number text not null,
+  operator_id uuid references operators(id),
+  category text not null,
+  range_nm integer not null,
+  cabin_height_in numeric(4,1),
+  pax_capacity integer not null,
+  fuel_burn_gph numeric(6,1),
+  has_wifi boolean default false,
+  has_bathroom boolean default false,
+  home_base_icao text,
+  notes text
+);
+
+create table crew (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  operator_id uuid references operators(id),
+  name text not null,
+  role text not null,
+  ratings text[],
+  duty_hours_this_week numeric(4,1) default 0,
+  last_duty_end timestamptz
+);
+
+create table trips (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  client_id uuid references clients(id),
+  raw_input text,
+  legs jsonb not null default '[]',
+  trip_type text not null default 'one_way',
+  pax_adults integer default 1,
+  pax_children integer default 0,
+  pax_pets integer default 0,
+  flexibility_hours integer default 0,
+  special_needs text,
+  catering_notes text,
+  luggage_notes text,
+  preferred_category text,
+  min_cabin_height_in numeric(4,1),
+  wifi_required boolean default false,
+  bathroom_required boolean default false,
+  ai_extracted boolean default false,
+  ai_confidence jsonb
+);
+
+create table quotes (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  trip_id uuid references trips(id) not null,
+  client_id uuid references clients(id),
+  aircraft_id uuid references aircraft(id),
+  operator_id uuid references operators(id),
+  status text not null default 'new',
+  version integer default 1,
+  margin_pct numeric(5,2) default 15.0,
+  currency text default 'USD',
+  broker_name text,
+  broker_commission_pct numeric(5,2),
+  notes text,
+  sent_at timestamptz,
+  confirmed_at timestamptz
+);
+
+create table quote_costs (
+  id uuid primary key default uuid_generate_v4(),
+  quote_id uuid references quotes(id) not null,
+  fuel_cost numeric(10,2) default 0,
+  fbo_fees numeric(10,2) default 0,
+  repositioning_cost numeric(10,2) default 0,
+  repositioning_hours numeric(5,1) default 0,
+  permit_fees numeric(10,2) default 0,
+  crew_overnight_cost numeric(10,2) default 0,
+  catering_cost numeric(10,2) default 0,
+  peak_day_surcharge numeric(10,2) default 0,
+  subtotal numeric(10,2) default 0,
+  margin_amount numeric(10,2) default 0,
+  tax numeric(10,2) default 0,
+  total numeric(10,2) default 0,
+  per_leg_breakdown jsonb default '[]',
+  operator_quoted_rate numeric(10,2)
+);
+
+create table audit_logs (
+  id uuid primary key default uuid_generate_v4(),
+  created_at timestamptz default now(),
+  user_id uuid,
+  action text not null,
+  entity_type text,
+  entity_id uuid,
+  payload jsonb,
+  ai_generated boolean default false,
+  ai_model text,
+  human_verified boolean default false
+);
+
+-- ── RLS ──────────────────────────────────────────────────────────────────────
+
+alter table clients enable row level security;
+alter table operators enable row level security;
+alter table aircraft enable row level security;
+alter table crew enable row level security;
+alter table trips enable row level security;
+alter table quotes enable row level security;
+alter table quote_costs enable row level security;
+alter table audit_logs enable row level security;
+
+create policy "staff_all" on clients     for all using (auth.role() = 'authenticated');
+create policy "staff_all" on operators   for all using (auth.role() = 'authenticated');
+create policy "staff_all" on aircraft    for all using (auth.role() = 'authenticated');
+create policy "staff_all" on crew        for all using (auth.role() = 'authenticated');
+create policy "staff_all" on trips       for all using (auth.role() = 'authenticated');
+create policy "staff_all" on quotes      for all using (auth.role() = 'authenticated');
+create policy "staff_all" on quote_costs for all using (auth.role() = 'authenticated');
+create policy "staff_all" on audit_logs  for all using (auth.role() = 'authenticated');
+
+-- ── Operators ────────────────────────────────────────────────────────────────
+
 insert into operators (id, name, cert_number, cert_expiry, insurance_expiry, reliability_score, blacklisted, notes) values
   ('3b7f8a2c-1d4e-4f6a-9b2c-8e1f3a7d5c0b', 'Summit Air Charter',    'D-STMM-2201', '2026-03-15', '2026-01-31', 4.8, false, 'Top-tier Midwest operator, two-crew policy on all legs'),
   ('7c2d9e4f-5a1b-4c8d-a3e7-2f6b9d0e1c4a', 'Coastal Jet Group',     'D-CJGP-1893', '2025-09-30', '2025-11-14', 4.5, false, 'SE fleet, fast turnaround, strong FBO relationships'),
   ('5e1a3c7b-9f2d-4e6a-8b4c-1d7e9f2a5b3c', 'Apex Private Aviation', 'D-APXV-0741', '2025-04-10', '2026-05-22', 3.9, false, 'Cert renewal in progress — verify before booking heavy iron'),
   ('9d4f7a2e-3b6c-4d8a-b5f1-7e2c4a9d6f1b', 'TransAtlantic Air LLC', 'D-TATL-3320', '2026-08-01', '2026-07-15', 4.7, false, 'Specializes in transatlantic and ETOPS-certified routes');
 
--- Aircraft (fixed UUIDs so quotes reference them by ID, not subquery)
+-- ── Aircraft ─────────────────────────────────────────────────────────────────
+-- Fixed UUIDs so quotes can reference aircraft directly after a reset.
+
 insert into aircraft (id, tail_number, operator_id, category, range_nm, cabin_height_in, pax_capacity, fuel_burn_gph, has_wifi, has_bathroom, home_base_icao, notes) values
   ('2a7f4c1e-8b3d-4f6a-9c2e-5d1b7a3f9e4c', 'N114PC', '3b7f8a2c-1d4e-4f6a-9b2c-8e1f3a7d5c0b', 'turboprop',  1845, 59.0,  8,  74.0, false, true,  'KVNY', 'Pilatus PC-12 NGX — 2021, workhorse short-haul, no wifi'),
   ('6e3b9d5f-1c4a-4b7d-8e2f-3a9c6b1d4e7f', 'N388CJ', '7c2d9e4f-5a1b-4c8d-a3e7-2f6b9d0e1c4a', 'light',      2040, 57.5,  6,  96.0, false, false, 'KBUR', 'Citation CJ3 — 2014, no lavatory, ideal for quick hops'),
@@ -24,7 +190,8 @@ insert into aircraft (id, tail_number, operator_id, category, range_nm, cabin_he
   ('7f4a2c9e-1d6b-4e3f-9a7c-5b2e8f4a1d6c', 'N495CL', '5e1a3c7b-9f2d-4e6a-8b4c-1d7e9f2a5b3c', 'heavy',      4000, 73.5, 12, 295.0, true,  true,  'KJFK', 'Challenger 605 — 2018, club seating + divan, dual-zone'),
   ('1b6d4e8f-5c3a-4b7d-8e2f-9c1b6d4e5f3a', 'N741GX', '9d4f7a2e-3b6c-4d8a-b5f1-7e2c4a9d6f1b', 'ultra-long', 7500, 77.0, 16, 412.0, true,  true,  'KBOS', 'Gulfstream G650ER — 2022, flagship, transatlantic range');
 
--- Clients
+-- ── Clients ───────────────────────────────────────────────────────────────────
+
 insert into clients (id, name, company, email, phone, nationality, vip, risk_flag, notes) values
   ('4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c', 'James Whitfield',   'Acme Corp',            'james@acmecorp.com',       '+1 (310) 555-0192', 'US', true,  false, 'CEO. Prefers midsize+, always requests catering. Loyal repeat client.'),
   ('8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b', 'Priya Nair',        'Horizon Ventures',     'priya.nair@horizonvc.com', '+1 (415) 555-0348', 'US', false, false, 'VC partner. Frequently LA→NYC. Wifi critical, light traveler.'),
@@ -32,7 +199,8 @@ insert into clients (id, name, company, email, phone, nationality, vip, risk_fla
   ('6a3e1f9c-5d7b-4e4a-a2c8-9f6a3e1d5c7b', 'Sofia Castellanos', 'Meridian Media Group', 'scastellanos@meridmg.com', '+1 (212) 555-0761', 'US', false, false, 'Marketing exec. Group bookings 6–10 pax, often with tight notice.'),
   ('9f7b5c2d-8a4e-4f3b-b9d1-5c7f2b8a4e3d', 'Derek Okonkwo',     'Okonkwo Capital',      'derek@okonkwocap.com',     '+1 (713) 555-0523', 'US', false, true,  'Payment issues on Q3 booking — require deposit before confirming.');
 
--- Crew (2–3 per operator)
+-- ── Crew (2–3 per operator) ───────────────────────────────────────────────────
+
 insert into crew (id, operator_id, name, role, ratings, duty_hours_this_week) values
   -- Summit Air Charter
   ('2f6a3d8c-7e1b-4c5f-b9a4-8d2f6a3c7e1b', '3b7f8a2c-1d4e-4f6a-9b2c-8e1f3a7d5c0b', 'Captain David Holt',     'captain',          ARRAY['Citation XLS+', 'Challenger 350', 'Citation Latitude'], 12.5),
@@ -49,9 +217,8 @@ insert into crew (id, operator_id, name, role, ratings, duty_hours_this_week) va
   ('a8e2f6d1-3c9b-4e5a-9f2c-7b8a2e6d3c9f', '9d4f7a2e-3b6c-4d8a-b5f1-7e2c4a9d6f1b', 'FO Yuki Tanaka',         'first_officer',    ARRAY['Gulfstream G450', 'Gulfstream G650ER'], 6.0),
   ('f2a6b9e4-7d1c-4f8a-b4e9-1c3f2a6d7b9e', '9d4f7a2e-3b6c-4d8a-b5f1-7e2c4a9d6f1b', 'FA Camille Dubois',      'flight_attendant', ARRAY[]::text[], 6.0);
 
--- ============================================================
--- Trips
--- ============================================================
+-- ── Trips ─────────────────────────────────────────────────────────────────────
+
 insert into trips (id, client_id, legs, trip_type, pax_adults, pax_children, flexibility_hours, catering_notes, luggage_notes, wifi_required, ai_extracted, created_at) values
 
   ('3b8f5a1d-7c4e-4f2b-9a6d-1e3f8c5a7b4d',
@@ -96,12 +263,11 @@ insert into trips (id, client_id, legs, trip_type, pax_adults, pax_children, fle
    'one_way', 1, 0, 0, NULL, NULL, true, false,
    now() - interval '60 days');
 
--- ============================================================
--- Quotes (various statuses)
--- ============================================================
+-- ── Quotes ────────────────────────────────────────────────────────────────────
+
 insert into quotes (id, trip_id, client_id, aircraft_id, operator_id, status, version, margin_pct, currency, notes, sent_at, confirmed_at, created_at) values
 
-  -- new
+  -- new: just created, not yet priced
   ('7a4e2c9f-1d8b-4b5a-9e7c-4f2a7e1c8d9b',
    '9c7f4b1e-3a6d-4b9c-a1f8-3e9c7f4b6a1d',
    '9f7b5c2d-8a4e-4f3b-b9d1-5c7f2b8a4e3d',
@@ -110,7 +276,7 @@ insert into quotes (id, trip_id, client_id, aircraft_id, operator_id, status, ve
    'new', 1, 20.0, 'USD', NULL, NULL, NULL,
    now() - interval '3 days'),
 
-  -- pricing
+  -- pricing: cost breakdown being worked
   ('1c8f7a3e-5d2b-4c9f-b6a4-7e1c8f3a2d5b',
    '5f2a8d7b-9e1c-4d6f-b4a9-7d5f2e8a1c9b',
    '6a3e1f9c-5d7b-4e4a-a2c8-9f6a3e1d5c7b',
@@ -119,7 +285,7 @@ insert into quotes (id, trip_id, client_id, aircraft_id, operator_id, status, ve
    'pricing', 1, 18.0, 'USD', 'Short hop, Challenger overkill — CJ3 better fit', NULL, NULL,
    now() - interval '4 days'),
 
-  -- sent
+  -- sent: quote emailed to client
   ('5d3b1f8c-9e4a-4d7b-a2f5-8c5d3b1f9e4a',
    '7e4c2f9a-1d8b-4a5e-b3f7-4c2e7f9a1d8c',
    '8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b',
@@ -128,7 +294,7 @@ insert into quotes (id, trip_id, client_id, aircraft_id, operator_id, status, ve
    'sent', 1, 22.0, 'USD', 'Priya prefers XLS+ for this route', now() - interval '5 days', NULL,
    now() - interval '8 days'),
 
-  -- negotiating
+  -- negotiating: client pushing back on price
   ('9e7d5a2f-3b1c-4e8d-b9f7-2a9e5d7a3c1f',
    '3b8f5a1d-7c4e-4f2b-9a6d-1e3f8c5a7b4d',
    '4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c',
@@ -137,7 +303,7 @@ insert into quotes (id, trip_id, client_id, aircraft_id, operator_id, status, ve
    'negotiating', 2, 19.0, 'USD', 'James requested v2 at lower margin. Hold at 19%.', now() - interval '8 days', NULL,
    now() - interval '11 days'),
 
-  -- confirmed
+  -- confirmed: booked and deposit received
   ('3f1a9e6d-7c4b-4f2a-9d3e-6b3f1a9e7c4b',
    '1a9d6f3c-5b2e-4c8a-a7d4-9f1a3c6b5e2d',
    '2d9a6f4e-3c8b-4a1d-9f5e-6b2d9a4f3c8e',
@@ -146,7 +312,7 @@ insert into quotes (id, trip_id, client_id, aircraft_id, operator_id, status, ve
    'confirmed', 1, 25.0, 'USD', 'Marcus confirmed. Full deposit received.', now() - interval '4 days', now() - interval '2 days',
    now() - interval '6 days'),
 
-  -- lost
+  -- lost: client went with another broker
   ('7b5f3c1a-2e9d-4c6b-a7f3-1a7b5c3f2e9d',
    '8d5c3a7f-2b9e-4f1d-a6b3-9e8d5c3f7a2b',
    '8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b',
@@ -155,7 +321,7 @@ insert into quotes (id, trip_id, client_id, aircraft_id, operator_id, status, ve
    'lost', 1, 20.0, 'USD', 'Lost to competitor — Priya said pricing was $400 higher', now() - interval '55 days', NULL,
    now() - interval '58 days'),
 
-  -- completed
+  -- completed: flight done, invoiced
   ('2e9c7f4a-6d1b-4a3e-b8c2-4f2e9c7a6d1b',
    '4b1e9f6c-8a5d-4c2b-9e7f-6c4b1a9f8d5e',
    '4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c',
@@ -164,9 +330,9 @@ insert into quotes (id, trip_id, client_id, aircraft_id, operator_id, status, ve
    'completed', 1, 22.0, 'USD', 'Completed. James very happy — sent referral.', now() - interval '25 days', now() - interval '28 days',
    now() - interval '29 days');
 
--- ============================================================
--- Quote costs
--- ============================================================
+-- ── Quote costs ───────────────────────────────────────────────────────────────
+-- Covers all quotes with status: pricing, sent, negotiating, confirmed, lost, completed.
+
 insert into quote_costs (quote_id, fuel_cost, fbo_fees, repositioning_cost, repositioning_hours, permit_fees, crew_overnight_cost, catering_cost, peak_day_surcharge, subtotal, margin_amount, tax, total, per_leg_breakdown) values
 
   -- sent — KSFO→KTEB on Citation XLS+
@@ -175,7 +341,7 @@ insert into quote_costs (quote_id, fuel_cost, fbo_fees, repositioning_cost, repo
    12150, 2673, 0, 14823,
    '[{"leg":"KSFO→KTEB","flight_hours":5.1,"fuel_cost":8400,"fbo_fees":600,"subtotal":9000}]'),
 
-  -- negotiating — KLAX→KTEB round trip on Challenger 350
+  -- negotiating — KLAX→KTEB round trip on Challenger 350 (v2, lower margin)
   ('9e7d5a2f-3b1c-4e8d-b9f7-2a9e5d7a3c1f',
    14600, 2400, 3200, 3.0, 0, 1200, 800, 600,
    22800, 4332, 0, 27132,

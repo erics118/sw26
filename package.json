@@ -11,9 +11,11 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "db:reset": "tsx --env-file=.env.local scripts/reset-db.ts",
     "prepare": "prek install"
   },
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.50",
     "@anthropic-ai/sdk": "^0.78.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
@@ -32,8 +34,10 @@
     "eslint": "^9.39.2",
     "eslint-config-next": "^16.1.6",
     "eslint-config-prettier": "^10.1.8",
+    "postgres": "^3.4.8",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
