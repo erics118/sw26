@@ -7,7 +7,6 @@ import { haversineNm, isWithinCurfew } from "./airport-db";
 import type { AircraftPerf } from "./performance";
 import {
   effectiveSpeedKts,
-  effectiveFuelBurnGph,
   effectiveMinRunwayFt,
   fuelForLegGal,
 } from "./performance";

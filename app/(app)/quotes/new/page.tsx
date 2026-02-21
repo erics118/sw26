@@ -42,11 +42,6 @@ interface Operator {
   blacklisted: boolean;
 }
 
-interface ComplianceResult {
-  passed: boolean;
-  failures: string[];
-}
-
 interface RouteLeg {
   from_icao: string;
   to_icao: string;
@@ -127,8 +122,6 @@ export default function NewQuotePage() {
   const [marginPct, setMarginPct] = useState(20);
   const [notes, setNotes] = useState("");
 
-  const [compliance, setCompliance] = useState<ComplianceResult | null>(null);
-  const [checkingCompliance, setCheckingCompliance] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -198,36 +191,6 @@ export default function NewQuotePage() {
           .join(" → ")
       : "No legs"
     : null;
-
-  const runCompliance = useCallback(async () => {
-    if (!selectedTripId || !selectedAircraftId || !selectedOperatorId) return;
-    setCheckingCompliance(true);
-    setCompliance(null);
-    try {
-      const res = await fetch("/api/compliance/check", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          trip_id: selectedTripId,
-          aircraft_id: selectedAircraftId,
-          operator_id: selectedOperatorId,
-        }),
-      });
-      const data = (await res.json()) as ComplianceResult & { error?: string };
-      if (!res.ok) {
-        setCompliance({
-          passed: false,
-          failures: [data.error ?? "Check failed"],
-        });
-      } else {
-        setCompliance(data);
-      }
-    } catch {
-      setCompliance({ passed: false, failures: ["Network error"] });
-    } finally {
-      setCheckingCompliance(false);
-    }
-  }, [selectedTripId, selectedAircraftId, selectedOperatorId]);
 
   const runRoutePlan = useCallback(async () => {
     if (!selectedTripId || !selectedAircraftId) return;
@@ -363,7 +326,6 @@ export default function NewQuotePage() {
                       key={t.id}
                       onClick={() => {
                         setSelectedTripId(t.id);
-                        setCompliance(null);
                       }}
                       className={`w-full rounded-md border px-4 py-3 text-left transition-colors ${
                         isSelected
@@ -414,7 +376,6 @@ export default function NewQuotePage() {
                       key={a.id}
                       onClick={() => {
                         setSelectedAircraftId(a.id);
-                        setCompliance(null);
                       }}
                       className={`rounded-md border px-3 py-2.5 text-left transition-colors ${
                         isSelected
@@ -619,7 +580,6 @@ export default function NewQuotePage() {
                       key={op.id}
                       onClick={() => {
                         setSelectedOperatorId(op.id);
-                        setCompliance(null);
                       }}
                       disabled={op.blacklisted}
                       className={`rounded-md border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
@@ -665,7 +625,7 @@ export default function NewQuotePage() {
           </Card>
         </div>
 
-        {/* Right sidebar — settings + compliance */}
+        {/* Right sidebar — settings */}
         <div className="space-y-5">
           {/* Selection summary */}
           {(selectedTrip || selectedAircraft || selectedOperator) && (
@@ -843,52 +803,6 @@ export default function NewQuotePage() {
             </div>
           </Card>
 
-          {/* Compliance */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Compliance</CardTitle>
-            </CardHeader>
-            {compliance ? (
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-semibold ${compliance.passed ? "text-emerald-400" : "text-red-400"}`}
-                  >
-                    {compliance.passed
-                      ? "✓ All checks passed"
-                      : "✗ Issues found"}
-                  </span>
-                </div>
-                {compliance.failures.length > 0 && (
-                  <ul className="space-y-1">
-                    {compliance.failures.map((f, i) => (
-                      <li key={i} className="text-xs text-red-400">
-                        · {f}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                <button
-                  onClick={() => void runCompliance()}
-                  className="mt-1 text-xs text-zinc-600 hover:text-amber-400"
-                >
-                  Re-run →
-                </button>
-              </div>
-            ) : (
-              <Button
-                onClick={() => void runCompliance()}
-                loading={checkingCompliance}
-                variant="secondary"
-                size="sm"
-                disabled={!canSave}
-                className="w-full justify-center"
-              >
-                {checkingCompliance ? "Checking…" : "Run Compliance Check"}
-              </Button>
-            )}
-          </Card>
-
           {/* Save */}
           {error && (
             <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400">
@@ -904,12 +818,6 @@ export default function NewQuotePage() {
           >
             Save & Send Quote →
           </Button>
-
-          {compliance && !compliance.passed && (
-            <p className="text-center text-xs text-zinc-600">
-              Compliance issues found — proceed with caution
-            </p>
-          )}
 
           {/* Status badge preview */}
           {canSave && (
