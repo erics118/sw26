@@ -112,12 +112,7 @@ export default function CostBreakdown({
         />
       ))}
       <div className="mt-2 border-t border-zinc-800 pt-2">
-        <Row
-          label="Subtotal (operator cost)"
-          amount={subtotal}
-          currency={currency}
-          dim
-        />
+        <Row label="Subtotal" amount={subtotal} currency={currency} dim />
         <Row
           label={`Margin (${marginPct}%)`}
           amount={marginAmount}

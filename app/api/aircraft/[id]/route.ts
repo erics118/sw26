@@ -14,16 +14,14 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("aircraft")
-    .select("*, operators(id, name)")
+    .select("*")
     .eq("id", id)
     .single();
 
   if (error || !data) {
     return NextResponse.json({ error: "Aircraft not found" }, { status: 404 });
   }
-  return NextResponse.json(
-    data as Aircraft & { operators: { id: string; name: string } | null },
-  );
+  return NextResponse.json(data as Aircraft);
 }
 
 export async function PATCH(

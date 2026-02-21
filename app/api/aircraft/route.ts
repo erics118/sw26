@@ -6,7 +6,7 @@ export async function GET() {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("aircraft")
-    .select("*, operators(id, name)")
+    .select("*")
     .order("created_at", { ascending: false });
 
   if (error) {
