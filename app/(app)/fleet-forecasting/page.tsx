@@ -6,7 +6,6 @@ import { CapacityGapCard } from "@/components/FleetForecasting/CapacityGapCard";
 import { UtilizationBar } from "@/components/FleetForecasting/UtilizationBar";
 import { RecommendationCard } from "@/components/FleetForecasting/RecommendationCard";
 import { InsightBlock } from "@/components/FleetForecasting/InsightBlock";
-import { ScenarioPanel } from "@/components/FleetForecasting/ScenarioPanel";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { useForecasterData } from "./hooks/useForecasterData";
@@ -246,8 +245,6 @@ export default function FleetForecastingPage() {
               ))}
             </div>
           )}
-
-          <ScenarioPanel forecastData={forecastData} />
         </div>
       )}
 

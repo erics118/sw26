@@ -240,7 +240,13 @@ export async function computePipelineDemand(
   startDate: Date,
   endDate: Date,
   category?: string,
+  options?: { winRateMultiplier?: number },
 ): Promise<PipelineDemandDay[]> {
+  const winRateMultiplier = Math.max(
+    0,
+    Math.min(1, options?.winRateMultiplier ?? 1),
+  );
+
   // Fetch pipeline quotes
   let pipelineQuery = supabase
     .from("quotes")
@@ -271,7 +277,10 @@ export async function computePipelineDemand(
     const date = q.scheduled_departure_time!.slice(0, 10);
     const cat = q.chosen_aircraft_category ?? "unknown";
     const status = q.status ?? "quoted";
-    const pWin = STAGE_WIN_PROB[status] ?? 0.4;
+    const pWin = Math.max(
+      0,
+      Math.min(1, (STAGE_WIN_PROB[status] ?? 0.4) * winRateMultiplier),
+    );
 
     const weightedHours = pWin * (q.scheduled_total_hours ?? 0);
 
