@@ -298,6 +298,80 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["quote_costs"]["Insert"]>;
         Relationships: [];
       };
+      aircraft_maintenance: {
+        Row: {
+          id: string;
+          aircraft_id: string;
+          start_time: string;
+          end_time: string;
+          maintenance_type: string;
+          notes: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          aircraft_id: string;
+          start_time: string;
+          end_time: string;
+          maintenance_type?: string;
+          notes?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["aircraft_maintenance"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      fleet_forecast_overrides: {
+        Row: {
+          id: string;
+          date: string;
+          aircraft_category: string;
+          peak_multiplier: number;
+          reason: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          date: string;
+          aircraft_category: string;
+          peak_multiplier?: number;
+          reason?: string | null;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["fleet_forecast_overrides"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      empty_leg_offers: {
+        Row: {
+          id: string;
+          aircraft_id: string;
+          offer_date: string;
+          from_icao: string;
+          to_icao: string;
+          discount_pct: number;
+          reason: string;
+          status: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          aircraft_id: string;
+          offer_date: string;
+          from_icao: string;
+          to_icao: string;
+          discount_pct?: number;
+          reason?: string;
+          status?: string;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["empty_leg_offers"]["Insert"]
+        >;
+        Relationships: [];
+      };
       audit_logs: {
         Row: {
           id: string;
@@ -342,6 +416,13 @@ export type Trip = Database["public"]["Tables"]["trips"]["Row"];
 export type Quote = Database["public"]["Tables"]["quotes"]["Row"];
 export type QuoteCost = Database["public"]["Tables"]["quote_costs"]["Row"];
 export type AuditLog = Database["public"]["Tables"]["audit_logs"]["Row"];
+
+export type AircraftMaintenance =
+  Database["public"]["Tables"]["aircraft_maintenance"]["Row"];
+export type FleetForecastOverride =
+  Database["public"]["Tables"]["fleet_forecast_overrides"]["Row"];
+export type EmptyLegOffer =
+  Database["public"]["Tables"]["empty_leg_offers"]["Row"];
 
 export type TripLeg = {
   from_icao: string;
