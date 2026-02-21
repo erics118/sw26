@@ -656,7 +656,7 @@ function NewQuotePageContent() {
             size="lg"
             className="w-full justify-center"
           >
-            Save & Send Quote →
+            Save Quote →
           </Button>
 
           {canSave && (
