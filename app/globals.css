@@ -5,6 +5,7 @@
   --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
   --font-display: var(--font-instrument-serif), Georgia, serif;
+  --font-opensans: var(--font-open-sans), "Open Sans", sans-serif;
 
   /* Ops Center colors */
   --color-primary: hsl(160 100% 45%);

@@ -3,6 +3,7 @@ import {
   Instrument_Sans,
   Instrument_Serif,
   JetBrains_Mono,
+  Open_Sans,
 } from "next/font/google";
 import "./globals.css";
 
@@ -17,6 +18,12 @@ const instrumentSerif = Instrument_Serif({
   subsets: ["latin"],
   weight: "400",
   style: ["normal", "italic"],
+});
+
+const openSans = Open_Sans({
+  variable: "--font-open-sans",
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
 });
 
 const jetbrainsMono = JetBrains_Mono({
@@ -38,7 +45,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} bg-zinc-950 text-zinc-100 antialiased`}
+        className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} ${openSans.variable} bg-zinc-950 text-zinc-100 antialiased`}
       >
         {children}
       </body>

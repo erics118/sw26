@@ -10,11 +10,11 @@ repos:
       - id: eslint
         name: eslint
         language: system
-        entry: npx eslint --fix
+        entry: /opt/homebrew/bin/node node_modules/.bin/eslint --fix
         types_or: [javascript, jsx, ts, tsx]
 
       - id: prettier
         name: prettier
         language: system
-        entry: npx prettier --write --ignore-unknown
+        entry: /opt/homebrew/bin/node node_modules/.bin/prettier --write --ignore-unknown
         types_or: [javascript, jsx, ts, tsx, css, json, markdown, mdx]
