@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import { AircraftGrid } from "@/components/Aircraft/AircraftGrid";
@@ -30,11 +31,19 @@ export default async function AircraftPage() {
 
   return (
     <div className="p-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-zinc-100">Fleet</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          {aircraft?.length ?? 0} aircraft
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-zinc-100">Fleet</h1>
+          <p className="mt-1 text-sm text-zinc-600">
+            {aircraft?.length ?? 0} aircraft
+          </p>
+        </div>
+        <Link
+          href="/aircraft/new"
+          className="rounded-md bg-amber-400 px-4 py-2 font-semibold text-zinc-950 transition-colors hover:bg-amber-300"
+        >
+          + Add Aircraft
+        </Link>
       </div>
 
       {!sorted.length ? (
