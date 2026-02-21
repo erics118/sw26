@@ -15,8 +15,8 @@ const INEFFICIENT_THRESHOLD = 0.3;
  * Compute utilization metrics per aircraft over a given period.
  *
  * utilization_rate = (paid_hours + reposition_hours) / available_hours
- * empty_leg_ratio  = reposition_hours / (paid_hours + reposition_hours)
  * idle_days        = days with zero scheduled hours
+ * inefficient     = flag when reposition share of used hours is high
  */
 export async function computeUtilization(
   supabase: SupabaseClient<Database>,
@@ -111,14 +111,14 @@ export async function computeUtilization(
     const availableHours = dailyHours * totalDays;
     const totalUsed = stats.paidHours + stats.repoHours;
     const utilizationRate = availableHours > 0 ? totalUsed / availableHours : 0;
-    const emptyLegRatio = totalUsed > 0 ? stats.repoHours / totalUsed : 0;
+    const repositionRatio = totalUsed > 0 ? stats.repoHours / totalUsed : 0;
     const idleDays = totalDays - stats.scheduledDates.size;
 
     const flags: UtilizationFlag[] = [];
     if (utilizationRate < UNDERUTILIZED_THRESHOLD) flags.push("underutilized");
     if (utilizationRate > OVERCONSTRAINED_THRESHOLD)
       flags.push("overconstrained");
-    if (emptyLegRatio > INEFFICIENT_THRESHOLD) flags.push("inefficient");
+    if (repositionRatio > INEFFICIENT_THRESHOLD) flags.push("inefficient");
 
     metrics.push({
       aircraft_id: ac.id,
@@ -126,7 +126,6 @@ export async function computeUtilization(
       category: ac.category,
       home_base_icao: ac.home_base_icao,
       utilization_rate: Math.round(utilizationRate * 1000) / 1000,
-      empty_leg_ratio: Math.round(emptyLegRatio * 1000) / 1000,
       idle_days: idleDays,
       paid_hours: Math.round(stats.paidHours * 10) / 10,
       reposition_hours: Math.round(stats.repoHours * 10) / 10,
