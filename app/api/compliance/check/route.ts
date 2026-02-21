@@ -30,7 +30,7 @@ export async function POST(request: Request) {
   const parsed = BodySchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.flatten() },
+      { error: parsed.error.issues.map((i) => i.message).join(", ") },
       { status: 400 },
     );
   }

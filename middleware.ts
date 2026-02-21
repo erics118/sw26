@@ -31,7 +31,14 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  const isPublic = pathname === "/" || pathname === "/login";
+  const isPublic = pathname === "/login";
+
+  // Redirect / to login (or dashboard if logged in)
+  if (pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = user ? "/dashboard" : "/login";
+    return NextResponse.redirect(url);
+  }
 
   // Redirect unauthenticated users to login
   if (!user && !isPublic) {

@@ -46,7 +46,7 @@ export async function PATCH(
   const parsed = UpdateClientSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.flatten() },
+      { error: parsed.error.issues.map((i) => i.message).join(", ") },
       { status: 400 },
     );
   }
