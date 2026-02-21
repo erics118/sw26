@@ -1,6 +1,7 @@
 "use client";
 
 import type { ActionRecommendation } from "@/lib/forecasting/types";
+import { formatFlightTime } from "@/lib/format";
 
 interface RecommendationCardProps {
   rec: ActionRecommendation;
@@ -47,13 +48,13 @@ export function RecommendationCard({ rec }: RecommendationCardProps) {
           <div>
             <p className="text-[10px] text-zinc-600">Repo hours</p>
             <p className="tabnum text-xs font-medium text-zinc-300">
-              {rec.estimated_reposition_hours.toFixed(1)} hrs
+              {formatFlightTime(rec.estimated_reposition_hours)}
             </p>
           </div>
           <div>
             <p className="text-[10px] text-zinc-600">Util gain</p>
             <p className="tabnum text-xs font-medium text-emerald-400">
-              +{rec.expected_utilization_gain.toFixed(1)} hrs
+              +{formatFlightTime(rec.expected_utilization_gain)}
             </p>
           </div>
         </div>

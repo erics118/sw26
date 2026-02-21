@@ -125,7 +125,13 @@ export function fuelWithReserveGal(
   return legFuelGal + reserveFuelGal(aircraft);
 }
 
-/** Flight time in hours for a given distance. */
+// Realism factors for block time (vs pure cruise)
+// Route factor: airways typically add ~5% over great-circle distance
+const ROUTE_DISTANCE_FACTOR = 1.05;
+// Climb/descent: add 10% for climb-out and approach (slower than cruise)
+const CLIMB_DESCENT_FACTOR = 1.1;
+
+/** Flight time in hours for a given distance (block time estimate). */
 export function flightTimeHr(
   distNm: number,
   aircraft: AircraftPerf,
@@ -135,7 +141,8 @@ export function flightTimeHr(
     effectiveSpeedKts(aircraft) - windCorrectionKts,
     1,
   );
-  return distNm / groundSpeedKts;
+  const cruiseTimeHr = (distNm * ROUTE_DISTANCE_FACTOR) / groundSpeedKts;
+  return cruiseTimeHr * CLIMB_DESCENT_FACTOR;
 }
 
 // ─── Mode-specific cruise profiles ───────────────────────────────────────────

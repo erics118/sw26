@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { PlanesNeeded } from "@/lib/forecasting/types";
+import { formatFlightTime } from "@/lib/format";
 
 interface ForecastChartProps {
   data: PlanesNeeded[];
@@ -76,7 +77,7 @@ export function ForecastChart({ data, category }: ForecastChartProps) {
             name: string | undefined,
           ) =>
             [
-              typeof value === "number" ? `${value.toFixed(1)} hrs` : "—",
+              typeof value === "number" ? formatFlightTime(value) : "—",
               name === "available" ? "Available" : "Demand",
             ] as [string, string]
           }

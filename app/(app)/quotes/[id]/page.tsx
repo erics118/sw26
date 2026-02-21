@@ -6,6 +6,7 @@ import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import StatusStepper from "@/components/ui/StatusStepper";
 import CostBreakdown from "@/components/ui/CostBreakdown";
 import type { RoutePlan } from "@/lib/database.types";
+import { formatFlightTime } from "@/lib/format";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -272,7 +273,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                     {
                       label: "Flight time",
                       value: routePlan.total_flight_time_hr
-                        ? `${routePlan.total_flight_time_hr.toFixed(1)} hr`
+                        ? formatFlightTime(routePlan.total_flight_time_hr)
                         : "—",
                     },
                     {
@@ -341,8 +342,8 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                           </span>
                         )}
                         <span className="tabnum ml-auto text-xs text-zinc-500">
-                          {leg.distance_nm} nm · {leg.flight_time_hr.toFixed(1)}{" "}
-                          hr
+                          {leg.distance_nm} nm ·{" "}
+                          {formatFlightTime(leg.flight_time_hr)}
                         </span>
                       </div>
                     ))}

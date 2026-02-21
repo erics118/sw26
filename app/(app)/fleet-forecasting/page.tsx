@@ -20,6 +20,7 @@ import type {
   ForecastAccuracy,
   DelayReasonBreakdown,
 } from "@/lib/forecasting/types";
+import { formatFlightTime } from "@/lib/format";
 
 type Tab = "forecast" | "utilization" | "learning";
 type Horizon = 7 | 30 | 90;
@@ -497,10 +498,10 @@ export default function FleetForecastingPage() {
                             {a.aircraft_category}
                           </td>
                           <td className="tabnum py-2 text-right text-zinc-400">
-                            {a.predicted_hours.toFixed(1)} hrs
+                            {formatFlightTime(a.predicted_hours)}
                           </td>
                           <td className="tabnum py-2 text-right text-zinc-400">
-                            {a.actual_hours.toFixed(1)} hrs
+                            {formatFlightTime(a.actual_hours)}
                           </td>
                           <td
                             className={`tabnum py-2 text-right font-medium ${
@@ -550,7 +551,7 @@ export default function FleetForecastingPage() {
                         </span>
                         <div className="flex items-center gap-3">
                           <span className="tabnum text-zinc-600">
-                            {d.total_hours_lost.toFixed(1)} hrs lost
+                            {formatFlightTime(d.total_hours_lost)} lost
                           </span>
                           <Badge variant="zinc">{d.count}×</Badge>
                         </div>

@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import { formatFlightTime } from "@/lib/format";
 
 interface TripLeg {
   from_icao: string;
@@ -462,8 +463,8 @@ export default function NewQuotePage() {
                         </span>
                       )}
                       <span className="tabnum ml-auto text-xs text-zinc-500">
-                        {leg.distance_nm} nm · {leg.flight_time_hr.toFixed(1)}{" "}
-                        hr
+                        {leg.distance_nm} nm ·{" "}
+                        {formatFlightTime(leg.flight_time_hr)}
                       </span>
                     </div>
                   ))}
@@ -683,7 +684,7 @@ export default function NewQuotePage() {
                   <div className="flex justify-between">
                     <span className="text-zinc-600">Flight time</span>
                     <span className="tabnum text-zinc-300">
-                      {routePlan.total_flight_time_hr.toFixed(1)} hr
+                      {formatFlightTime(routePlan.total_flight_time_hr)}
                     </span>
                   </div>
                   <div className="flex justify-between">
