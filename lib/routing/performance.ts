@@ -1,7 +1,5 @@
 // ─── Aircraft performance helpers ─────────────────────────────────────────────
-// Single source of truth for category-level defaults.
-// The pricing engine (lib/pricing/engine.ts) has its own copy for now;
-// when convenient, engine.ts can import CATEGORY_PERF from here.
+// Single source of truth for category-level defaults (used by pricing engine and routing).
 
 export interface CategoryPerf {
   speedKts: number;

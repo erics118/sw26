@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:reset": "tsx --env-file=.env.local scripts/reset-db.ts",
-    "prepare": "prek install"
+    "prepare": "prek install",
+    "test": "vitest run"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.50",
@@ -25,8 +26,8 @@
     "next": "16.1.6",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "recharts": "^3.7.0",
     "react-leaflet": "^5.0.0",
+    "recharts": "^3.7.0",
     "tailwindcss": "4.2.0",
     "zod": "^4.3.6"
   },
@@ -43,6 +44,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18"
   }
 }

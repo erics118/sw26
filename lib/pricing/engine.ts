@@ -1,22 +1,10 @@
 import { distanceNm } from "@/lib/geo";
+import { CATEGORY_PERF } from "@/lib/routing/performance";
 import type { TripLeg } from "@/lib/database.types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const FUEL_PRICE_PER_GAL = 7.5; // Jet-A USD/gallon
-
-// Cruise speed (knots) and default fuel burn (gph) by aircraft category
-const CATEGORY_PERF: Record<
-  string,
-  { speedKts: number; defaultFuelBurnGph: number }
-> = {
-  turboprop: { speedKts: 250, defaultFuelBurnGph: 55 },
-  light: { speedKts: 420, defaultFuelBurnGph: 100 },
-  midsize: { speedKts: 450, defaultFuelBurnGph: 155 },
-  "super-mid": { speedKts: 470, defaultFuelBurnGph: 205 },
-  heavy: { speedKts: 480, defaultFuelBurnGph: 300 },
-  "ultra-long": { speedKts: 490, defaultFuelBurnGph: 355 },
-};
 
 // Flat FBO fees per landing (USD). Unknown airports get the default.
 const FBO_FEES: Record<string, number> = {

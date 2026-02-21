@@ -34,7 +34,6 @@ app/
     quotes/          # List, new, [id]
     clients/         # List, [id]
     aircraft/
-    operators/
     fleet-forecasting/
   (auth)/            # login
   api/
@@ -42,7 +41,6 @@ app/
     clients/         # CRUD + [id]
     crew/            # CRUD + [id]
     intake/          # AI intake endpoint
-    operators/       # CRUD + [id]
     quotes/          # CRUD + [id] + [id]/versions
     routing/         # plan/, plan/[id], airports/, airports/[icao]
     fleet-forecasting/  # forecast, insights, maintenance, overrides, recommendations, utilization
@@ -56,7 +54,6 @@ lib/
       database.ts    # All MCP tool definitions (createDatabaseTools)
   ai/                # Direct Claude helpers
     audit.ts         # Audit log writer
-    intake.ts        # Legacy intake (unused by routes)
     forecasting.ts   # Fleet forecasting AI
   forecasting/       # Fleet forecasting logic (capacity, demand, utilization, etc.)
   pricing/
@@ -77,7 +74,7 @@ components/
 
 ## Auth
 
-Supabase auth managed via `middleware.ts`:
+Supabase auth managed via `proxy.ts` (Next.js 16 proxy convention):
 
 - `/` redirects to `/dashboard` (authenticated) or `/login` (unauthenticated)
 - Unauthenticated requests to protected routes redirect to `/login`
@@ -86,7 +83,7 @@ Supabase auth managed via `middleware.ts`:
 ## Agents (Claude Agent SDK)
 
 - `lib/agents/index.ts` — `runAgent<T>()` shared runner, uses `bypassPermissions`
-- `lib/agents/tools/database.ts` — `createDatabaseTools(supabase)` — MCP tools: `search_clients`, `save_trip`, `get_trip`, `list_aircraft`, `list_operators`, `list_crew`, `calculate_pricing`, `save_quote`
+- `lib/agents/tools/database.ts` — `createDatabaseTools(supabase)` — MCP tools: `search_clients`, `save_trip`, `get_trip`, `list_aircraft`, `list_crew`, `calculate_pricing`, `save_quote`
 - `lib/agents/intake.agent.ts` — extracts trip from free text, WebFetch enabled
 - `lib/agents/quote.agent.ts` — builds and saves quotes, no builtin tools
 

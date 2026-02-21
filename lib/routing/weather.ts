@@ -173,8 +173,9 @@ export function buildWeatherSummary(
   icao: string,
   metar: RawMetar | undefined,
   taf: RawTaf | undefined,
-  _aircraft: AircraftPerf, // reserved for aircraft-specific crosswind limits
+  _aircraft: AircraftPerf, // reserved for aircraft-specific crosswind limits; intentionally unused
 ): WeatherSummary {
+  void _aircraft;
   const now = new Date().toISOString();
 
   if (!metar) {

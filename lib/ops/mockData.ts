@@ -101,24 +101,6 @@ const aircraftTypes = [
   "Global 7500",
   "Hawker 800",
 ];
-const airports = [
-  "KJFK",
-  "KLAX",
-  "KORD",
-  "KMIA",
-  "KTEB",
-  "KLAS",
-  "KDEN",
-  "KSFO",
-  "KBOS",
-  "KDCA",
-  "KPBI",
-  "KSDL",
-  "KVNY",
-  "KHOU",
-  "KATL",
-  "KSEA",
-];
 
 const airportCoords: Record<string, [number, number]> = {
   KJFK: [40.6413, -73.7781],
@@ -302,6 +284,3 @@ export const mockAlerts: Alert[] = [
     timestamp: "08:00Z",
   },
 ];
-
-// Suppress unused variable warnings for airports array (kept for reference)
-void airports;
