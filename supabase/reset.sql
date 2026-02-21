@@ -12,7 +12,6 @@ create extension if not exists "uuid-ossp";
 -- ── Drop tables (reverse FK order) ───────────────────────────────────────────
 
 drop table if exists route_plans cascade;
-drop table if exists empty_leg_offers cascade;
 drop table if exists fleet_forecast_overrides cascade;
 drop table if exists aircraft_maintenance cascade;
 drop table if exists airports cascade;
@@ -256,18 +255,6 @@ create table fleet_forecast_overrides (
   unique(date, aircraft_category)
 );
 
-create table empty_leg_offers (
-  id uuid primary key default uuid_generate_v4(),
-  aircraft_id uuid references aircraft(id) on delete cascade not null,
-  offer_date date not null,
-  from_icao text not null,
-  to_icao text not null,
-  discount_pct numeric(5,2) not null default 20.0,
-  reason text not null default 'idle risk high',
-  status text not null default 'active', -- 'active', 'converted', 'expired'
-  created_at timestamptz default now()
-);
-
 -- migration 003_route_plans
 create table route_plans (
   id uuid primary key default uuid_generate_v4(),
@@ -310,7 +297,6 @@ alter table audit_logs enable row level security;
 alter table airports enable row level security;
 alter table aircraft_maintenance enable row level security;
 alter table fleet_forecast_overrides enable row level security;
-alter table empty_leg_offers enable row level security;
 alter table route_plans enable row level security;
 
 create policy "staff_all" on clients                  for all using (auth.role() = 'authenticated');
@@ -324,7 +310,6 @@ create policy "staff_all" on audit_logs               for all using (auth.role()
 create policy "staff_all" on airports                 for all using (auth.role() = 'authenticated');
 create policy "staff_all" on aircraft_maintenance     for all using (auth.role() = 'authenticated');
 create policy "staff_all" on fleet_forecast_overrides for all using (auth.role() = 'authenticated');
-create policy "staff_all" on empty_leg_offers         for all using (auth.role() = 'authenticated');
 create policy "staff_all" on route_plans              for all using (auth.role() = 'authenticated');
 
 -- ── Operators ────────────────────────────────────────────────────────────────

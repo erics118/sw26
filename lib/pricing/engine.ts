@@ -127,19 +127,6 @@ function feeForAirport(icao: string): number {
   return FBO_FEES[icao.toUpperCase()] ?? DEFAULT_FBO_FEE;
 }
 
-// ─── Block hours helper (flight time only, no repositioning) ─────────────────
-
-export function calculateBlockHours(
-  legs: TripLeg[],
-  aircraftCategory: string,
-): number {
-  const perf = CATEGORY_PERF[aircraftCategory] ?? CATEGORY_PERF["midsize"]!;
-  return legs.reduce((total, leg) => {
-    const distNm = distanceNm(leg.from_icao, leg.to_icao);
-    return total + distNm / perf.speedKts;
-  }, 0);
-}
-
 // ─── Main engine ─────────────────────────────────────────────────────────────
 
 export function calculatePricing(input: PricingInput): PricingResult {

@@ -1,9 +1,7 @@
 /**
  * Great-circle distance utilities for ICAO airport codes.
  *
- * haversineNm — returns null if either code is unknown
- * distanceNm  — returns 500 nm fallback if either code is unknown (use for pricing)
- * knownAirport — whether an ICAO code is in the static table
+ * distanceNm — returns 500 nm fallback if either code is unknown (use for pricing)
  */
 
 interface LatLon {
@@ -155,23 +153,10 @@ function haversine(a: LatLon, b: LatLon): number {
   return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-/** Great-circle distance in nm. Returns null if either ICAO is unknown. */
-export function haversineNm(icao1: string, icao2: string): number | null {
-  const a = AIRPORTS[icao1.toUpperCase()];
-  const b = AIRPORTS[icao2.toUpperCase()];
-  if (!a || !b) return null;
-  return haversine(a, b);
-}
-
 /** Great-circle distance in nm. Returns 500 nm fallback if either ICAO is unknown. */
 export function distanceNm(icaoA: string, icaoB: string): number {
   const a = AIRPORTS[icaoA.toUpperCase()];
   const b = AIRPORTS[icaoB.toUpperCase()];
   if (!a || !b) return FALLBACK_DISTANCE_NM;
   return haversine(a, b);
-}
-
-/** Whether a given ICAO code is in the static table. */
-export function knownAirport(icao: string): boolean {
-  return icao.toUpperCase() in AIRPORTS;
 }
