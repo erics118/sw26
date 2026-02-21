@@ -196,8 +196,8 @@ export default function FlightMap({
     null,
   );
 
-  const airborneFlights = useMemo(
-    () => flights.filter((f) => f.inAir),
+  const displayedFlights = useMemo(
+    () => flights, // Show all aircraft (both airborne and grounded)
     [flights],
   );
   const selectedFlight = useMemo(
@@ -294,7 +294,7 @@ export default function FlightMap({
         />
 
         <AircraftMarkers
-          flights={airborneFlights}
+          flights={displayedFlights}
           selectedId={selectedId}
           onSelect={handleSelect}
           onHover={handleHover}
