@@ -118,6 +118,7 @@ export async function POST(request: Request) {
     marginPct,
     cateringRequested,
     isInternational,
+    fuelPriceOverrideUsd: input.fuel_price_override_usd,
   });
 
   // Derived hour totals for the quote

@@ -80,6 +80,13 @@ export interface Database {
           notes: string | null;
           status: string;
           daily_available_hours: number;
+          // Added by migration 001_aircraft_performance
+          cruise_speed_kts: number | null;
+          max_fuel_capacity_gal: number | null;
+          min_runway_ft: number | null;
+          etops_certified: boolean;
+          max_payload_lbs: number | null;
+          reserve_fuel_gal: number | null;
         };
         Insert: {
           id?: string;
@@ -97,6 +104,12 @@ export interface Database {
           notes?: string | null;
           status?: string;
           daily_available_hours?: number;
+          cruise_speed_kts?: number | null;
+          max_fuel_capacity_gal?: number | null;
+          min_runway_ft?: number | null;
+          etops_certified?: boolean;
+          max_payload_lbs?: number | null;
+          reserve_fuel_gal?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["aircraft"]["Insert"]>;
         Relationships: [];
@@ -400,6 +413,106 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["audit_logs"]["Insert"]>;
         Relationships: [];
       };
+      airports: {
+        Row: {
+          icao: string;
+          iata: string | null;
+          name: string;
+          city: string | null;
+          country_code: string;
+          lat: number;
+          lon: number;
+          elevation_ft: number | null;
+          longest_runway_ft: number | null;
+          fuel_jet_a: boolean;
+          fuel_price_usd_gal: number | null;
+          fuel_price_updated_at: string | null;
+          fbo_fee_usd: number | null;
+          operating_hours_utc: Json | null;
+          curfew_utc: Json | null;
+          customs_available: boolean;
+          deicing_available: boolean;
+          slot_required: boolean;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          icao: string;
+          iata?: string | null;
+          name: string;
+          city?: string | null;
+          country_code: string;
+          lat: number;
+          lon: number;
+          elevation_ft?: number | null;
+          longest_runway_ft?: number | null;
+          fuel_jet_a?: boolean;
+          fuel_price_usd_gal?: number | null;
+          fuel_price_updated_at?: string | null;
+          fbo_fee_usd?: number | null;
+          operating_hours_utc?: Json | null;
+          curfew_utc?: Json | null;
+          customs_available?: boolean;
+          deicing_available?: boolean;
+          slot_required?: boolean;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["airports"]["Insert"]>;
+        Relationships: [];
+      };
+      route_plans: {
+        Row: {
+          id: string;
+          created_at: string;
+          quote_id: string | null;
+          trip_id: string | null;
+          aircraft_id: string | null;
+          optimization_mode: string;
+          route_legs: Json;
+          refuel_stops: Json;
+          weather_summary: Json;
+          notam_alerts: Json;
+          alternatives: Json;
+          cost_breakdown: Json | null;
+          total_distance_nm: number | null;
+          total_flight_time_hr: number | null;
+          total_fuel_cost: number | null;
+          risk_score: number | null;
+          on_time_probability: number | null;
+          computed_at: string;
+          weather_fetched_at: string | null;
+          notam_fetched_at: string | null;
+          is_stale: boolean;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          quote_id?: string | null;
+          trip_id?: string | null;
+          aircraft_id?: string | null;
+          optimization_mode: string;
+          route_legs: Json;
+          refuel_stops: Json;
+          weather_summary: Json;
+          notam_alerts: Json;
+          alternatives: Json;
+          cost_breakdown?: Json | null;
+          total_distance_nm?: number | null;
+          total_flight_time_hr?: number | null;
+          total_fuel_cost?: number | null;
+          risk_score?: number | null;
+          on_time_probability?: number | null;
+          computed_at?: string;
+          weather_fetched_at?: string | null;
+          notam_fetched_at?: string | null;
+          is_stale?: boolean;
+        };
+        Update: Partial<Database["public"]["Tables"]["route_plans"]["Insert"]>;
+        Relationships: [];
+      };
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;
@@ -439,3 +552,53 @@ export type QuoteStatus =
   | "confirmed"
   | "lost"
   | "completed";
+
+// ─── Airport ──────────────────────────────────────────────────────────────────
+export type Airport = {
+  icao: string;
+  iata: string | null;
+  name: string;
+  city: string | null;
+  country_code: string;
+  lat: number;
+  lon: number;
+  elevation_ft: number | null;
+  longest_runway_ft: number | null;
+  fuel_jet_a: boolean;
+  fuel_price_usd_gal: number | null;
+  fuel_price_updated_at: string | null;
+  fbo_fee_usd: number | null;
+  operating_hours_utc: { from: string; to: string } | null;
+  curfew_utc: { from: string; to: string } | null;
+  customs_available: boolean;
+  deicing_available: boolean;
+  slot_required: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// ─── RoutePlan ────────────────────────────────────────────────────────────────
+export type RoutePlan = {
+  id: string;
+  created_at: string;
+  quote_id: string | null;
+  trip_id: string | null;
+  aircraft_id: string | null;
+  optimization_mode: string;
+  route_legs: Json;
+  refuel_stops: Json;
+  weather_summary: Json;
+  notam_alerts: Json;
+  alternatives: Json;
+  cost_breakdown: Json | null;
+  total_distance_nm: number | null;
+  total_flight_time_hr: number | null;
+  total_fuel_cost: number | null;
+  risk_score: number | null;
+  on_time_probability: number | null;
+  computed_at: string;
+  weather_fetched_at: string | null;
+  notam_fetched_at: string | null;
+  is_stale: boolean;
+};
