@@ -30,6 +30,18 @@ function createAircraftIcon(heading: number, selected: boolean) {
   });
 }
 
+// Compute which 360° world-copy offsets are needed to cover the map's current lng bounds
+function visibleWorldOffsets(map: L.Map): number[] {
+  const bounds = map.getBounds();
+  const west = bounds.getWest();
+  const east = bounds.getEast();
+  const minOffset = Math.floor(west / 360) * 360;
+  const maxOffset = Math.ceil(east / 360) * 360;
+  const offsets: number[] = [];
+  for (let o = minOffset; o <= maxOffset; o += 360) offsets.push(o);
+  return offsets;
+}
+
 // Aircraft markers component: incremental add/update/remove (no full teardown on dep change)
 function AircraftMarkers({
   flights,
@@ -44,45 +56,64 @@ function AircraftMarkers({
 }) {
   const map = useMap();
   const markersRef = useMemo(() => new Map<string, L.Marker>(), []);
+  const [offsets, setOffsets] = useState<number[]>(() =>
+    visibleWorldOffsets(map),
+  );
+
+  // Recompute offsets whenever the map is panned or zoomed
+  useEffect(() => {
+    const update = () => setOffsets(visibleWorldOffsets(map));
+    map.on("moveend", update);
+    map.on("zoomend", update);
+    return () => {
+      map.off("moveend", update);
+      map.off("zoomend", update);
+    };
+  }, [map]);
 
   useEffect(() => {
-    const flightIds = new Set(flights.map((f) => f.id));
+    const activeKeys = new Set(
+      flights.flatMap((f) => offsets.map((o) => `${f.id}:${o}`)),
+    );
 
-    // Remove markers for flights no longer in the list
-    markersRef.forEach((marker, id) => {
-      if (!flightIds.has(id)) {
+    // Remove markers for flights/copies no longer needed
+    markersRef.forEach((marker, key) => {
+      if (!activeKeys.has(key)) {
         marker.remove();
-        markersRef.delete(id);
+        markersRef.delete(key);
       }
     });
 
-    // Add or update markers for current flights
+    // Add or update markers across all visible world copies
     flights.forEach((flight) => {
       const icon = createAircraftIcon(flight.heading, flight.id === selectedId);
-      const existing = markersRef.get(flight.id);
+      offsets.forEach((offset) => {
+        const key = `${flight.id}:${offset}`;
+        const existing = markersRef.get(key);
 
-      if (existing) {
-        existing.setLatLng([flight.lat, flight.lon]);
-        existing.setIcon(icon);
-        existing.setZIndexOffset(flight.id === selectedId ? 1000 : 0);
-      } else {
-        const marker = L.marker([flight.lat, flight.lon], {
-          icon,
-          zIndexOffset: flight.id === selectedId ? 1000 : 0,
-        });
-        marker.on("click", () => onSelect(flight.id));
-        marker.on("mouseover", () => onHover(flight));
-        marker.on("mouseout", () => onHover(null));
-        marker.addTo(map);
-        markersRef.set(flight.id, marker);
-      }
+        if (existing) {
+          existing.setLatLng([flight.lat, flight.lon + offset]);
+          existing.setIcon(icon);
+          existing.setZIndexOffset(flight.id === selectedId ? 1000 : 0);
+        } else {
+          const marker = L.marker([flight.lat, flight.lon + offset], {
+            icon,
+            zIndexOffset: flight.id === selectedId ? 1000 : 0,
+          });
+          marker.on("click", () => onSelect(flight.id));
+          marker.on("mouseover", () => onHover(flight));
+          marker.on("mouseout", () => onHover(null));
+          marker.addTo(map);
+          markersRef.set(key, marker);
+        }
+      });
     });
 
     return () => {
       markersRef.forEach((marker) => marker.remove());
       markersRef.clear();
     };
-  }, [flights, selectedId, map, onSelect, onHover, markersRef]);
+  }, [flights, selectedId, map, onSelect, onHover, markersRef, offsets]);
 
   return null;
 }
@@ -251,6 +282,12 @@ export default function FlightMap({
       <MapContainer
         center={[38, -96]}
         zoom={5}
+        minZoom={2}
+        maxBounds={[
+          [-85.051129, -200000],
+          [85.051129, 200000],
+        ]}
+        maxBoundsViscosity={1.0}
         className="h-full w-full"
         zoomControl={true}
         style={{ background: "hsl(222 30% 5%)" }}

@@ -44,7 +44,7 @@ export default function OpsCenter() {
   }
 
   return (
-    <div className="flex h-[640px] overflow-hidden rounded-lg border border-zinc-800">
+    <div className="flex h-190 overflow-hidden rounded-lg border border-zinc-800">
       <div className="relative flex-1">
         <FlightMap
           flights={mockFlights}
