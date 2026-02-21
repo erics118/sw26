@@ -87,6 +87,8 @@ export async function computeRoutePlan(
     refuel_stops: optimized.refuel_stops,
     total_flight_time_hr: optimized.total_flight_time_hr,
     is_international: isIntl,
+    route_legs: optimized.route_legs,
+    aircraft_category: aircraft.category,
   });
 
   // Attach risk/on-time to alternatives (reuse weather/NOTAM from primary)

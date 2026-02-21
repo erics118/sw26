@@ -5,7 +5,7 @@ import {
   MapContainer,
   TileLayer,
   Polyline,
-  CircleMarker,
+  Marker,
   Tooltip,
   useMap,
 } from "react-leaflet";
@@ -14,6 +14,22 @@ import type { Flight } from "@/lib/ops/types";
 import { Plane } from "lucide-react";
 
 const NEON_GREEN = "#00e696";
+
+/** DOM-based circle icons so start/end stay stable during map fly (no SVG glitch) */
+function createRoutePointIcon(kind: "origin" | "dest") {
+  const isOrigin = kind === "origin";
+  const style = isOrigin
+    ? `width:12px;height:12px;border-radius:50%;background:${NEON_GREEN};opacity:0.9;border:1px solid ${NEON_GREEN};`
+    : `width:12px;height:12px;border-radius:50%;background:${NEON_GREEN};opacity:0.15;border:2px dashed ${NEON_GREEN};`;
+  return L.divIcon({
+    html: `<div style="${style}"></div>`,
+    className: "route-point-marker",
+    iconSize: [12, 12],
+    iconAnchor: [6, 6],
+  });
+}
+const ORIGIN_ICON = createRoutePointIcon("origin");
+const DEST_ICON = createRoutePointIcon("dest");
 
 // Commercial airliner silhouette SVG - neon green
 function createAircraftIcon(heading: number, selected: boolean) {
@@ -202,6 +218,28 @@ export default function FlightMap({
     (id: string) => setRouteVisibleForId(id),
     [],
   );
+  const showRoute =
+    routeVisibleForId === selectedId &&
+    selectedId !== null &&
+    selectedFlight?.originCoords &&
+    selectedFlight?.destCoords;
+  const traveledPositions = useMemo((): [number, number][] | null => {
+    if (!showRoute || !selectedFlight) return null;
+    return selectedFlight.trail?.length > 1
+      ? [
+          selectedFlight.originCoords,
+          ...selectedFlight.trail,
+          [selectedFlight.lat, selectedFlight.lon],
+        ]
+      : [selectedFlight.originCoords, [selectedFlight.lat, selectedFlight.lon]];
+  }, [showRoute, selectedFlight]);
+  const remainingPositions = useMemo((): [number, number][] | null => {
+    if (!showRoute || !selectedFlight) return null;
+    return [
+      [selectedFlight.lat, selectedFlight.lon],
+      selectedFlight.destCoords,
+    ];
+  }, [showRoute, selectedFlight]);
 
   return (
     <div className="relative h-full w-full">
@@ -263,37 +301,19 @@ export default function FlightMap({
         />
 
         {/* Route lines + airport markers — shown only after flyTo completes */}
-        {routeVisibleForId === selectedId &&
-          selectedId !== null &&
-          selectedFlight?.originCoords &&
-          selectedFlight?.destCoords && (
+        {showRoute &&
+          selectedFlight &&
+          traveledPositions &&
+          remainingPositions && (
             <>
-              {selectedFlight.trail?.length > 1 ? (
-                <Polyline
-                  key={`trail-${selectedId}`}
-                  positions={[
-                    selectedFlight.originCoords,
-                    ...selectedFlight.trail,
-                    [selectedFlight.lat, selectedFlight.lon],
-                  ]}
-                  pathOptions={{ color: NEON_GREEN, weight: 2, opacity: 0.6 }}
-                />
-              ) : (
-                <Polyline
-                  key={`trail-${selectedId}`}
-                  positions={[
-                    selectedFlight.originCoords,
-                    [selectedFlight.lat, selectedFlight.lon],
-                  ]}
-                  pathOptions={{ color: NEON_GREEN, weight: 2, opacity: 0.6 }}
-                />
-              )}
               <Polyline
-                key={`future-${selectedId}`}
-                positions={[
-                  [selectedFlight.lat, selectedFlight.lon],
-                  selectedFlight.destCoords,
-                ]}
+                key={`traveled-${selectedId}`}
+                positions={traveledPositions}
+                pathOptions={{ color: NEON_GREEN, weight: 2, opacity: 0.6 }}
+              />
+              <Polyline
+                key={`remaining-${selectedId}`}
+                positions={remainingPositions}
                 pathOptions={{
                   color: NEON_GREEN,
                   weight: 2,
@@ -301,17 +321,10 @@ export default function FlightMap({
                   dashArray: "8 12",
                 }}
               />
-              <CircleMarker
+              <Marker
                 key={`origin-${selectedId}`}
-                center={selectedFlight.originCoords}
-                radius={6}
-                pathOptions={{
-                  color: NEON_GREEN,
-                  fillColor: NEON_GREEN,
-                  fillOpacity: 0.6,
-                  weight: 2,
-                  opacity: 0.9,
-                }}
+                position={selectedFlight.originCoords}
+                icon={ORIGIN_ICON}
               >
                 <Tooltip
                   permanent
@@ -320,19 +333,11 @@ export default function FlightMap({
                 >
                   {selectedFlight.origin}
                 </Tooltip>
-              </CircleMarker>
-              <CircleMarker
+              </Marker>
+              <Marker
                 key={`dest-${selectedId}`}
-                center={selectedFlight.destCoords}
-                radius={6}
-                pathOptions={{
-                  color: NEON_GREEN,
-                  fillColor: NEON_GREEN,
-                  fillOpacity: 0.1,
-                  weight: 2,
-                  opacity: 0.6,
-                  dashArray: "4 4",
-                }}
+                position={selectedFlight.destCoords}
+                icon={DEST_ICON}
               >
                 <Tooltip
                   permanent
@@ -341,7 +346,7 @@ export default function FlightMap({
                 >
                   {selectedFlight.destination}
                 </Tooltip>
-              </CircleMarker>
+              </Marker>
             </>
           )}
       </MapContainer>

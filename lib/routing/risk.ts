@@ -1,8 +1,9 @@
 // ─── Risk scoring ─────────────────────────────────────────────────────────────
 // Computes a 0-100 risk score and 0.0-1.0 on-time probability
-// from routing outputs (weather, NOTAMs, complexity).
+// from routing outputs (weather, NOTAMs, complexity, time of day, aircraft).
+// Cost is intentionally not a factor: risk drives cost (contingency, delays), not the other way around.
 
-import type { WeatherSummary, NotamAlert, RefuelStop } from "./types";
+import type { WeatherSummary, NotamAlert, RefuelStop, RouteLeg } from "./types";
 
 export interface RiskInput {
   weather_summary: WeatherSummary[];
@@ -10,6 +11,10 @@ export interface RiskInput {
   refuel_stops: RefuelStop[];
   total_flight_time_hr: number;
   is_international: boolean;
+  /** Optional: leg times for night-flying risk (UTC). */
+  route_legs?: RouteLeg[];
+  /** Optional: aircraft category for capability-based risk (turboprop/light vs heavy). */
+  aircraft_category?: string;
 }
 
 export interface RiskResult {
@@ -20,9 +25,41 @@ export interface RiskResult {
 const refuelStopIcaos = (stops: RefuelStop[]): Set<string> =>
   new Set(stops.map((s) => s.icao));
 
+/** Night window in UTC hours (22–06): higher fatigue, fewer alternates, approach risk. */
+const NIGHT_UTC_HOURS = new Set([0, 1, 2, 3, 4, 5, 6, 22, 23]);
+
+function hasNightFlying(legs: RouteLeg[]): boolean {
+  for (const leg of legs) {
+    for (const iso of [leg.departure_utc, leg.arrival_utc]) {
+      if (!iso) continue;
+      const hour = new Date(iso).getUTCHours();
+      if (NIGHT_UTC_HOURS.has(hour)) return true;
+    }
+  }
+  return false;
+}
+
+/** Category-based risk: smaller/slower aircraft more susceptible to weather and ops. */
+function aircraftCategoryContrib(category: string | undefined): number {
+  if (!category) return 0;
+  switch (category) {
+    case "turboprop":
+      return 5;
+    case "light":
+      return 3;
+    case "midsize":
+    case "super-mid":
+    case "heavy":
+    case "ultra-long":
+    default:
+      return 0;
+  }
+}
+
 /**
  * Computes a transparent additive risk score.
- * Factors: weather (go/nogo, icing, convective, crosswind, wind), NOTAMs, route complexity.
+ * Factors: weather (go/nogo, icing, convective, crosswind, wind), NOTAMs, route complexity,
+ * time of day (night), and aircraft category.
  */
 export function computeRiskScore(input: RiskInput): RiskResult {
   let score = 10; // base: every flight has inherent risk
@@ -77,6 +114,12 @@ export function computeRiskScore(input: RiskInput): RiskResult {
     score += 8; // ultra-long haul
   else if (input.total_flight_time_hr > 8) score += 5;
   if (input.is_international) score += 6; // customs, slots, more variables
+
+  // ── Time of day (night flying) ───────────────────────────────────────────────
+  if (input.route_legs?.length && hasNightFlying(input.route_legs)) score += 4;
+
+  // ── Aircraft category ────────────────────────────────────────────────────────
+  score += aircraftCategoryContrib(input.aircraft_category);
 
   // Clamp to 0-100
   const risk_score = Math.min(100, Math.max(0, Math.round(score)));

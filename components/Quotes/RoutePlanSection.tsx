@@ -9,11 +9,7 @@ interface Props {
   currency: string;
 }
 
-export default function RoutePlanSection({
-  routePlan,
-  tripId,
-  currency: _currency,
-}: Props) {
+export default function RoutePlanSection({ routePlan, tripId }: Props) {
   return (
     <Card>
       <CardHeader>
