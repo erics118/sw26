@@ -1,9 +1,20 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 @theme inline {
   --font-sans: var(--font-instrument-sans), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
   --font-display: var(--font-instrument-serif), Georgia, serif;
+
+  /* Ops Center colors */
+  --color-primary: hsl(160 100% 45%);
+  --color-foreground: hsl(195 20% 90%);
+  --color-muted-foreground: hsl(215 15% 48%);
+  --color-background: hsl(222 30% 5%);
+  --color-danger: hsl(0 75% 55%);
+  --color-warning: hsl(45 95% 55%);
+  --color-border: hsl(220 15% 16%);
+  --color-muted: hsl(220 18% 12%);
 }
 
 body {
@@ -74,4 +85,98 @@ body {
 .tabnum {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
+}
+
+/* Ops Center CSS variables */
+:root {
+  --primary: 160 100% 45%;
+  --muted: 220 18% 12%;
+  --muted-foreground: 215 15% 48%;
+  --success: 160 100% 45%;
+  --warning: 45 95% 55%;
+  --danger: 0 75% 55%;
+  --glass: 220 25% 10%;
+  --glass-border: 220 15% 20%;
+  --border: 220 15% 16%;
+  --foreground: 195 20% 90%;
+  --radius: 0.75rem;
+}
+
+/* Ops utility classes (raw CSS, no @apply) */
+.glass-panel {
+  background: hsl(var(--glass) / 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid hsl(var(--glass-border) / 0.5);
+}
+.glass-card {
+  background: hsl(var(--glass) / 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--glass-border) / 0.4);
+  border-radius: var(--radius);
+}
+.neon-glow {
+  box-shadow:
+    0 0 15px hsl(var(--primary) / 0.15),
+    0 0 30px hsl(var(--primary) / 0.05);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0.125rem 0.625rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.status-green {
+  background: hsl(var(--success) / 0.15);
+  color: hsl(var(--success));
+  border: 1px solid hsl(var(--success) / 0.3);
+}
+.status-yellow {
+  background: hsl(var(--warning) / 0.15);
+  color: hsl(var(--warning));
+  border: 1px solid hsl(var(--warning) / 0.3);
+}
+.status-red {
+  background: hsl(var(--danger) / 0.15);
+  color: hsl(var(--danger));
+  border: 1px solid hsl(var(--danger) / 0.3);
+}
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted)) transparent;
+}
+
+/* Leaflet overrides */
+.leaflet-container {
+  background: hsl(222 30% 5%) !important;
+}
+.leaflet-control-zoom {
+  border: none !important;
+}
+.leaflet-control-zoom a {
+  background: hsl(var(--glass) / 0.8) !important;
+  backdrop-filter: blur(8px);
+  color: hsl(var(--foreground)) !important;
+  border: 1px solid hsl(var(--glass-border) / 0.5) !important;
+}
+.leaflet-control-attribution {
+  display: none !important;
+}
+.aircraft-marker {
+  background: transparent !important;
+  border: none !important;
+}
+.airport-tooltip {
+  background: hsl(222 30% 10% / 0.9) !important;
+  border: 1px solid hsl(160 100% 45% / 0.3) !important;
+  color: #00e696 !important;
+  font-family: monospace !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
 }

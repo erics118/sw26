@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Badge, { statusVariant } from "@/components/ui/Badge";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
+import OpsCenter from "@/components/ops/OpsCenter";
 
 function kpiCard(
   label: string,
@@ -110,6 +111,14 @@ export default async function DashboardPage() {
           "expiring within 30 days",
           expiringSoon > 0,
         )}
+      </div>
+
+      {/* Live Operations */}
+      <div className="mb-8">
+        <p className="mb-3 text-xs font-semibold tracking-widest text-zinc-600 uppercase">
+          Live Operations
+        </p>
+        <OpsCenter />
       </div>
 
       {/* Recent quotes */}
