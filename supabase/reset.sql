@@ -293,8 +293,16 @@ create policy "staff_all" on aircraft_maintenance     for all using (auth.role()
 create policy "staff_all" on fleet_forecast_overrides for all using (auth.role() = 'authenticated');
 create policy "staff_all" on route_plans              for all using (auth.role() = 'authenticated');
 
+-- ── Seed data: fixed UUIDs (must stay in sync) ─────────────────────────────────
+-- CLIENTS:  4e8f2a7c (James), 8c1f5d3a (Priya), 2d9a6f4e (Marcus), 6a3e1f9c (Sofia), 9f7b5c2d (Derek)
+-- AIRCRAFT: 2a7f4c1e (N114PC), 6e3b9d5f (N388CJ), 4c1d8f6a (N512PE), 8b5e2f9c (N744XL), 1f9c4a7e (N291HK),
+--           5a2d7f1c (N603LA), 9c6f3a4d (N177CR), 3d1b8e5f (N830GV), 7f4a2c9e (N495CL), 1b6d4e8f (N741GX)
+-- TRIPS:   3b8f5a1d, 7e4c2f9a, 1a9d6f3c, 5f2a8d7b, 9c7f4b1e, 4b1e9f6c, 8d5c3a7f  (client_id → clients.id)
+-- QUOTES:  7a4e2c9f, 1c8f7a3e, 5d3b1f8c, 9e7d5a2f, 3f1a9e6d, 7b5f3c1a, 2e9c7f4a  (trip_id, client_id, aircraft_id → above)
+-- QUOTE_COSTS: quote_id must be one of the 7 quote IDs above (5 rows: sent, negotiating, confirmed, lost, completed)
+-- ───────────────────────────────────────────────────────────────────────────────
+
 -- ── Aircraft ─────────────────────────────────────────────────────────────────
--- Fixed UUIDs so quotes can reference aircraft directly after a reset.
 
 insert into aircraft (id, tail_number, category, range_nm, cabin_height_in, pax_capacity, fuel_burn_gph, has_wifi, has_bathroom, home_base_icao, notes, status, daily_available_hours) values
   ('2a7f4c1e-8b3d-4f6a-9c2e-5d1b7a3f9e4c', 'N114PC', 'turboprop',  1845, 59.0,  8,  74.0, false, true,  'KVNY', 'Pilatus PC-12 NGX — 2021, workhorse short-haul, no wifi',  'active', 24),

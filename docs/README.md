@@ -37,9 +37,10 @@ Private aviation charter platform for managing clients, aircraft, quotes, trip i
 
 ### Data
 
-| Document                                               | Description                                                 |
-| ------------------------------------------------------ | ----------------------------------------------------------- |
-| [Database and schema](features/database-and-schema.md) | Core and supporting tables, relationships, validation (Zod) |
+| Document                                                | Description                                                                            |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [Database and schema](features/database-and-schema.md)  | Core and supporting tables, relationships, validation (Zod)                            |
+| [Logic and premise review](LOGIC_AND_PREMISE_REVIEW.md) | How the app aligns with single-operator charter, data, flights, and AI plane selection |
 
 ### API reference
 

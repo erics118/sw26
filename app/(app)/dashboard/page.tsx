@@ -37,37 +37,28 @@ type QuoteRow = {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ data: rawQuotes }, { data: trips }, { data: rawOperators }] =
-    await Promise.all([
-      supabase
-        .from("quotes")
-        .select(
-          "id, status, created_at, confirmed_at, clients(name), trips(legs)",
-        )
-        .order("created_at", { ascending: false })
-        .limit(20),
-      supabase
-        .from("trips")
-        .select("id", { count: "exact" })
-        .gte(
-          "requested_departure_window_start",
-          new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
-        )
-        .lte(
-          "requested_departure_window_start",
-          new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
-        ),
-      supabase
-        .from("operators")
-        .select("id, name, cert_expiry, insurance_expiry, reliability_score"),
-    ]);
+  const [{ data: rawQuotes }, { data: trips }] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select(
+        "id, status, created_at, confirmed_at, clients(name), trips(legs)",
+      )
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("trips")
+      .select("id", { count: "exact" })
+      .gte(
+        "requested_departure_window_start",
+        new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
+      )
+      .lte(
+        "requested_departure_window_start",
+        new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+      ),
+  ]);
 
   const quotes = rawQuotes as unknown as QuoteRow[] | null;
-  const operators = rawOperators as unknown as Array<{
-    cert_expiry: string | null;
-    insurance_expiry: string | null;
-  }> | null;
-
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
@@ -81,19 +72,7 @@ export default async function DashboardPage() {
         q.confirmed_at &&
         new Date(q.confirmed_at) >= weekAgo,
     ).length ?? 0;
-
-  const expiringSoon =
-    operators?.filter((op) => {
-      const certExpiry = op.cert_expiry ? new Date(op.cert_expiry) : null;
-      const insExpiry = op.insurance_expiry
-        ? new Date(op.insurance_expiry)
-        : null;
-      const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      return (
-        (certExpiry && certExpiry <= thirtyDays) ||
-        (insExpiry && insExpiry <= thirtyDays)
-      );
-    }).length ?? 0;
+  const sentAwaiting = quotes?.filter((q) => q.status === "sent").length ?? 0;
 
   const recentQuotes = quotes?.slice(0, 8) ?? [];
 
@@ -120,10 +99,10 @@ export default async function DashboardPage() {
         {kpiCard("Confirmed This Week", confirmedThisWeek, "last 7 days")}
         {kpiCard("Current Trips", trips?.length ?? 0, "departing today")}
         {kpiCard(
-          "Compliance Alerts",
-          expiringSoon,
-          "expiring within 30 days",
-          expiringSoon > 0,
+          "Sent (awaiting)",
+          sentAwaiting,
+          "quotes pending response",
+          sentAwaiting > 0,
         )}
       </div>
 

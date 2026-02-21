@@ -37,24 +37,24 @@ Compare **expected demand** (hours per day per aircraft category) with **availab
 
 ### Purpose
 
-Identify aircraft that are underused (low utilization, idle days, empty legs) and show **recommendations**: repositioning, empty-leg opportunities, and maintenance windows.
+Identify aircraft that are underused (low utilization, idle days) and show **recommendations**: repositioning, idle-aircraft opportunities, and maintenance windows.
 
 ### Features
 
 - **AI insight:** POST `/api/fleet-forecasting/insights` with `{ tab: "utilization" }`.
 - **Category KPIs:** Cards per category: average utilization %, underutilized count / total aircraft, and a utilization bar.
-- **Aircraft table:** "Aircraft — Ranked by Idle Risk" — columns: Aircraft (tail, category, home base), Utilization (bar), Empty leg %, Idle days, Flags (ok | underutilized | overconstrained | inefficient). Data: last 30 days.
+- **Aircraft table:** "Aircraft — Ranked by Idle Risk" — columns: Aircraft (tail, category, home base), Utilization (bar), Idle days, Flags (ok | underutilized | overconstrained | inefficient). Data: last 30 days.
 - **Recommendations (three columns):**
   - **Reposition** — list of reposition recommendations.
-  - **Empty legs** — idle aircraft in next 48h.
+  - **Idle aircraft** — idle aircraft in next 48h.
   - **Maintenance windows** — low-demand windows for maintenance.
 
 ### Data flow
 
 - **GET /api/fleet-forecasting/utilization?days=30**
-  Returns `UtilizationSummary`: `by_category` (avg utilization, underutilized count, total), `aircraft` (per-aircraft utilization_rate, empty_leg_ratio, idle_days, flags, etc.).
+  Returns `UtilizationSummary`: `by_category` (avg utilization, underutilized count, total), `aircraft` (per-aircraft utilization_rate, idle_days, flags, etc.).
 - **GET /api/fleet-forecasting/recommendations?horizon=7**
-  Returns `RecommendationSummary`: `reposition`, `empty_legs`, `maintenance_windows` (each array of recommendation objects).
+  Returns `RecommendationSummary`: `reposition`, idle-aircraft recommendations, `maintenance_windows` (each array of recommendation objects).
 
 ---
 
@@ -82,7 +82,7 @@ Compare **forecasted demand** vs **actual** (confirmed/completed flights) and sh
 - **Capacity:** `computeCapacity(supabase, startDate, endDate, category?)` — uses `aircraft` (status, daily_available_hours) and `aircraft_maintenance` to compute available hours per day per category.
 - **Demand:** `computeExpectedDemand` — combines confirmed bookings (e.g. from quotes/trips) and baseline/peak multipliers; can use `fleet_forecast_overrides` for peak multipliers per date/category.
 - **Planes needed:** `computePlanesNeeded(capacity, demand)` — compares expected demand hours to available hours, derives required aircraft and surplus/shortage/balanced.
-- **Utilization:** Logic for paid hours, reposition hours, idle days, empty-leg ratio, and flags (underutilized, overconstrained, inefficient) using target utilization from `lib/forecasting/types` (`TARGET_UTIL_HOURS`).
+- **Utilization:** Logic for paid hours, reposition hours, idle days, and flags (underutilized, overconstrained, inefficient) using target utilization from `lib/forecasting/types` (`TARGET_UTIL_HOURS`).
 - **Maintenance:** `aircraft_maintenance` table and maintenance-window recommendations (low-demand windows).
 
 ---

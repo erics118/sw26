@@ -162,6 +162,7 @@ export function createDatabaseTools(supabase: SupabaseClient) {
         let q = supabase
           .from("aircraft")
           .select("*")
+          .eq("status", "active")
           .order("range_nm", { ascending: false });
         if (category) q = q.eq("category", category);
         if (min_range_nm) q = q.gte("range_nm", min_range_nm);
@@ -213,7 +214,10 @@ export function createDatabaseTools(supabase: SupabaseClient) {
           .describe(
             "Aircraft home base ICAO for repositioning cost. Null = no repositioning.",
           ),
-        margin_pct: z.number().default(15).describe("Broker margin %"),
+        margin_pct: z
+          .number()
+          .default(15)
+          .describe("Margin % on cost breakdown"),
         catering_requested: z.boolean().default(false),
         is_international: z
           .boolean()

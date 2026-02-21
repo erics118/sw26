@@ -133,6 +133,7 @@ export default function NewQuotePage() {
           .select(
             "id, tail_number, category, range_nm, pax_capacity, has_wifi, has_bathroom",
           )
+          .eq("status", "active")
           .order("tail_number"),
       ]);
 

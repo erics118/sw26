@@ -43,9 +43,8 @@ These were exported from `lib/schemas/index.ts` but never imported elsewhere.
 
 - **CLAUDE.md** lists:
   - `lib/ai/intake.ts` — “Legacy intake (unused by routes)”. That file does **not** exist; only `lib/ai/audit.ts` and `lib/ai/forecasting.ts` exist.
-  - Agent tools include `list_operators`. Operators have been removed; `list_operators` is not in `lib/agents/tools/database.ts`.
 
-**Verdict:** Update CLAUDE.md so it doesn’t reference the missing file or the removed tool.
+**Verdict:** Update CLAUDE.md so it doesn’t reference the missing file.
 
 ---
 
@@ -58,7 +57,7 @@ These were exported from `lib/schemas/index.ts` but never imported elsewhere.
 | mockData.ts `airports` array                                  | Dead code                | Fixed: removed                         |
 | `CATEGORY_PERF` in engine vs performance                      | Duplication              | Fixed: engine imports from performance |
 | `MaintenanceItem`, `CrewMember`, `FleetAircraft` in ops types | Unused types             | Fixed: removed                         |
-| CLAUDE.md (intake.ts, list_operators, operators)              | Stale docs               | Fixed                                  |
+| CLAUDE.md (intake.ts)                                         | Stale docs               | Fixed                                  |
 
 No other clearly dead or heavily wasteful areas were found in the scanned app code, API routes, lib, or components.
 
@@ -69,9 +68,7 @@ No other clearly dead or heavily wasteful areas were found in the scanned app co
 ### CLAUDE.md
 
 - **Auth section (line 80):** Says “Supabase auth managed via `middleware.ts`”. There is no `middleware.ts`; the only auth redirect logic lives in `proxy.ts`, which is never loaded. So either auth is not actually enforced by middleware (e.g. only per-route), or the doc is wrong. **Fix:** Say how auth is really done (e.g. “Auth intended via `proxy.ts`; rename to `middleware.ts` to enable” or “Auth is per-route only”).
-- **Project structure:** Lists `(app)/operators/` and `api/operators/` but those routes were removed (migration 004). **Fix:** Remove operators from the structure.
 - **lib/ai:** Lists `intake.ts` — “Legacy intake (unused by routes)”. The file does not exist (only `audit.ts` and `forecasting.ts`). **Fix:** Remove the line.
-- **Agent tools list (line 89):** Includes `list_operators`. Operators are removed; that tool is not in `database.ts`. **Fix:** Remove `list_operators` from the list.
 - **quote.agent.ts (line 91):** “builds and saves quotes, no builtin tools”. The quote agent does use tools — it gets `dbTools` (search_clients, save_trip, get_trip, list_aircraft, list_crew, calculate_pricing, save_quote). “No builtin tools” here means no WebFetch/etc. **Fix:** Clarify e.g. “uses only database tools (no WebFetch)”.
 
 ### lib/geo.ts and CLAUDE.md

@@ -61,6 +61,18 @@ export async function POST(request: Request) {
     );
   }
 
+  // If client requested a specific status (e.g. "sent"), apply it after creation
+  if (parsed.data.status && parsed.data.status !== "new") {
+    await supabase
+      .from("quotes")
+      .update({ status: parsed.data.status })
+      .eq("id", result.quote.id);
+    result = {
+      ...result,
+      quote: { ...result.quote, status: parsed.data.status },
+    };
+  }
+
   // Audit log
   await supabase.from("audit_logs").insert({
     action: "quote.created",
