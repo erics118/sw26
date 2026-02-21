@@ -3,7 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { extractTripFromText } from "@/lib/ai/intake";
 import { auditAICall } from "@/lib/ai/audit";
 import { IntakeRequestSchema } from "@/lib/schemas";
-import type { Trip } from "@/lib/database.types";
+import { calculateBlockHours } from "@/lib/pricing/engine";
+import type { Trip, TripLeg } from "@/lib/database.types";
 
 export async function POST(request: Request) {
   const body = await request.json();
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { raw_text, client_id } = parsed.data;
+  const { raw_text, client_id, request_source } = parsed.data;
 
   let intakeResult;
   try {
@@ -29,6 +30,46 @@ export async function POST(request: Request) {
   }
 
   const { extracted, confidence } = intakeResult;
+
+  // ── Compute trip lifecycle fields ──────────────────────────────────────────
+  const legs = extracted.legs as TripLeg[];
+  const firstLeg = legs[0];
+  const lastLeg = legs[legs.length - 1];
+  const flexMs = extracted.flexibility_hours * 60 * 60 * 1000;
+
+  // Departure window (first leg ± flexibility)
+  const depBase = firstLeg
+    ? new Date(`${firstLeg.date}T${firstLeg.time}:00`).getTime()
+    : null;
+  const depWindowStart =
+    depBase !== null ? new Date(depBase - flexMs).toISOString() : null;
+  const depWindowEnd =
+    depBase !== null ? new Date(depBase + flexMs).toISOString() : null;
+
+  // Return window (last leg ± flexibility, only for round_trip / multi_leg)
+  const isReturn =
+    extracted.trip_type === "round_trip" || extracted.trip_type === "multi_leg";
+  const retBase =
+    isReturn && lastLeg && lastLeg !== firstLeg
+      ? new Date(`${lastLeg.date}T${lastLeg.time}:00`).getTime()
+      : null;
+  const retWindowStart =
+    retBase !== null ? new Date(retBase - flexMs).toISOString() : null;
+  const retWindowEnd =
+    retBase !== null ? new Date(retBase + flexMs).toISOString() : null;
+
+  // Block hours estimate (using preferred category speed, fallback midsize)
+  const estimatedBlockHours =
+    legs.length > 0
+      ? Math.round(
+          calculateBlockHours(legs, extracted.preferred_category ?? "midsize") *
+            10,
+        ) / 10
+      : null;
+
+  // Reposition unknown at intake time (no aircraft assigned yet)
+  const estimatedRepositionHours = null;
+  const estimatedTotalHours = estimatedBlockHours;
 
   const supabase = await createClient();
 
@@ -53,6 +94,14 @@ export async function POST(request: Request) {
       bathroom_required: extracted.bathroom_required,
       ai_extracted: true,
       ai_confidence: confidence,
+      request_source,
+      requested_departure_window_start: depWindowStart,
+      requested_departure_window_end: depWindowEnd,
+      requested_return_window_start: retWindowStart,
+      requested_return_window_end: retWindowEnd,
+      estimated_block_hours: estimatedBlockHours,
+      estimated_reposition_hours: estimatedRepositionHours,
+      estimated_total_hours: estimatedTotalHours,
     })
     .select()
     .single()) as unknown as {

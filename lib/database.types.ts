@@ -78,6 +78,8 @@ export interface Database {
           has_bathroom: boolean;
           home_base_icao: string | null;
           notes: string | null;
+          status: string;
+          daily_available_hours: number;
         };
         Insert: {
           id?: string;
@@ -93,6 +95,8 @@ export interface Database {
           has_bathroom?: boolean;
           home_base_icao?: string | null;
           notes?: string | null;
+          status?: string;
+          daily_available_hours?: number;
         };
         Update: Partial<Database["public"]["Tables"]["aircraft"]["Insert"]>;
         Relationships: [];
@@ -107,6 +111,7 @@ export interface Database {
           ratings: string[] | null;
           duty_hours_this_week: number;
           last_duty_end: string | null;
+          available_hours_per_day: number;
         };
         Insert: {
           id?: string;
@@ -117,6 +122,7 @@ export interface Database {
           ratings?: string[] | null;
           duty_hours_this_week?: number;
           last_duty_end?: string | null;
+          available_hours_per_day?: number;
         };
         Update: Partial<Database["public"]["Tables"]["crew"]["Insert"]>;
         Relationships: [];
@@ -142,6 +148,14 @@ export interface Database {
           bathroom_required: boolean;
           ai_extracted: boolean;
           ai_confidence: Json | null;
+          request_source: string | null;
+          requested_departure_window_start: string | null;
+          requested_departure_window_end: string | null;
+          requested_return_window_start: string | null;
+          requested_return_window_end: string | null;
+          estimated_block_hours: number | null;
+          estimated_reposition_hours: number | null;
+          estimated_total_hours: number | null;
         };
         Insert: {
           id?: string;
@@ -163,6 +177,14 @@ export interface Database {
           bathroom_required?: boolean;
           ai_extracted?: boolean;
           ai_confidence?: Json | null;
+          request_source?: string | null;
+          requested_departure_window_start?: string | null;
+          requested_departure_window_end?: string | null;
+          requested_return_window_start?: string | null;
+          requested_return_window_end?: string | null;
+          estimated_block_hours?: number | null;
+          estimated_reposition_hours?: number | null;
+          estimated_total_hours?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["trips"]["Insert"]>;
         Relationships: [];
@@ -185,6 +207,22 @@ export interface Database {
           notes: string | null;
           sent_at: string | null;
           confirmed_at: string | null;
+          // Quote stage
+          quote_valid_until: string | null;
+          chosen_aircraft_category: string | null;
+          estimated_total_hours: number | null;
+          won_lost_reason: string | null;
+          // Confirmed booking
+          scheduled_departure_time: string | null;
+          scheduled_arrival_time: string | null;
+          scheduled_total_hours: number | null;
+          // Post-flight actuals
+          actual_departure_time: string | null;
+          actual_arrival_time: string | null;
+          actual_block_hours: number | null;
+          actual_reposition_hours: number | null;
+          actual_total_hours: number | null;
+          delay_reason_code: string | null;
         };
         Insert: {
           id?: string;
@@ -203,6 +241,19 @@ export interface Database {
           notes?: string | null;
           sent_at?: string | null;
           confirmed_at?: string | null;
+          quote_valid_until?: string | null;
+          chosen_aircraft_category?: string | null;
+          estimated_total_hours?: number | null;
+          won_lost_reason?: string | null;
+          scheduled_departure_time?: string | null;
+          scheduled_arrival_time?: string | null;
+          scheduled_total_hours?: number | null;
+          actual_departure_time?: string | null;
+          actual_arrival_time?: string | null;
+          actual_block_hours?: number | null;
+          actual_reposition_hours?: number | null;
+          actual_total_hours?: number | null;
+          delay_reason_code?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["quotes"]["Insert"]>;
         Relationships: [];

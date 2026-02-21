@@ -232,8 +232,16 @@ export type CreateAuditLogInput = z.infer<typeof CreateAuditLogSchema>;
 
 // ─── Intake ───────────────────────────────────────────────────────────────────
 
+export const RequestSourceSchema = z.enum([
+  "email",
+  "phone",
+  "broker",
+  "portal",
+]);
+
 export const IntakeRequestSchema = z.object({
   raw_text: z.string().min(10),
   client_id: z.string().uuid().optional(),
+  request_source: RequestSourceSchema.optional().default("portal"),
 });
 export type IntakeRequest = z.infer<typeof IntakeRequestSchema>;

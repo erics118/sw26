@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { calculatePricing } from "@/lib/pricing/engine";
+import { calculatePricing, calculateBlockHours } from "@/lib/pricing/engine";
 import { CreateQuoteSchema } from "@/lib/schemas";
 import type {
   Trip,
@@ -108,15 +108,32 @@ export async function POST(request: Request) {
     (l) => l.from_icao.charAt(0) !== "K" || l.to_icao.charAt(0) !== "K",
   );
 
+  const aircraftCategory = aircraft?.category ?? "midsize";
+
   const pricing = calculatePricing({
     legs,
-    aircraftCategory: aircraft?.category ?? "midsize",
+    aircraftCategory,
     fuelBurnGph: aircraft?.fuel_burn_gph ?? null,
     homeBaseIcao: aircraft?.home_base_icao ?? null,
     marginPct,
     cateringRequested,
     isInternational,
   });
+
+  // Derived hour totals for the quote
+  const blockHours =
+    Math.round(calculateBlockHours(legs, aircraftCategory) * 10) / 10;
+  const repoHours = Math.round(pricing.repositioning_hours * 10) / 10;
+  const estimatedTotalHours = Math.round((blockHours + repoHours) * 10) / 10;
+
+  // Quote validity window (48h from now)
+  const quoteValidUntil = new Date(
+    Date.now() + 48 * 60 * 60 * 1000,
+  ).toISOString();
+
+  // Resolve status — default to "sent" since pricing runs at creation
+  const quoteStatus = input.status ?? "sent";
+  const sentAt = quoteStatus === "sent" ? new Date().toISOString() : null;
 
   // 5. Insert quote row
   const { data: rawQuote, error: quoteErr } = await supabase
@@ -126,13 +143,17 @@ export async function POST(request: Request) {
       client_id: input.client_id ?? trip.client_id,
       aircraft_id: input.aircraft_id ?? null,
       operator_id: input.operator_id ?? null,
-      status: "pricing",
+      status: quoteStatus,
       version: 1,
       margin_pct: marginPct,
       currency: input.currency ?? "USD",
       broker_name: input.broker_name ?? null,
       broker_commission_pct: input.broker_commission_pct ?? null,
       notes: input.notes ?? null,
+      quote_valid_until: quoteValidUntil,
+      chosen_aircraft_category: aircraftCategory,
+      estimated_total_hours: estimatedTotalHours,
+      sent_at: sentAt,
     })
     .select()
     .single();
