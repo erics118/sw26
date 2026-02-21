@@ -33,10 +33,8 @@ create table aircraft (
   has_bathroom boolean default false,
   home_base_icao text,
   notes text,
-  -- migration 001_add_operational_fields
   status text not null default 'active',          -- 'active' | 'unavailable'
   daily_available_hours numeric(4,1) default 8,
-  -- migration 001_aircraft_performance
   cruise_speed_kts integer,                       -- knots; NULL → category default
   max_fuel_capacity_gal numeric(8,1),             -- usable gallons; NULL → category default
   min_runway_ft integer,                          -- minimum required runway length
@@ -54,7 +52,6 @@ create table crew (
   ratings text[],
   duty_hours_this_week numeric(4,1) default 0,
   last_duty_end timestamptz,
-  -- migration 001_add_operational_fields
   available_hours_per_day numeric(4,1) default 10
 );
 
@@ -80,7 +77,6 @@ create table trips (
   bathroom_required boolean default false,
   ai_extracted boolean default false,
   ai_confidence jsonb, -- per-field confidence scores
-  -- migration 001_add_operational_fields
   request_source text,                            -- 'email' | 'phone' | 'broker' | 'portal'
   requested_departure_window_start timestamptz,
   requested_departure_window_end timestamptz,
@@ -108,16 +104,13 @@ create table quotes (
   notes text,
   sent_at timestamptz,
   confirmed_at timestamptz,
-  -- migration 001_add_operational_fields: quote stage
   quote_valid_until timestamptz,
   chosen_aircraft_category text,                  -- may differ from trip.preferred_category
   estimated_total_hours numeric(5,1),
   won_lost_reason text,                           -- 'price'|'availability'|'client_cancelled'|'competitor'|'other'
-  -- migration 001_add_operational_fields: confirmed booking stage
   scheduled_departure_time timestamptz,
   scheduled_arrival_time timestamptz,
   scheduled_total_hours numeric(5,1),
-  -- migration 001_add_operational_fields: post-flight actuals
   actual_departure_time timestamptz,
   actual_arrival_time timestamptz,
   actual_block_hours numeric(5,1),
@@ -160,7 +153,7 @@ create table audit_logs (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Migration 002: Airports
+-- Airports
 -- ─────────────────────────────────────────────────────────────────────────────
 
 create table airports (
@@ -188,7 +181,7 @@ create table airports (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- Migration 002: Fleet Forecasting
+-- Fleet Forecasting
 -- ─────────────────────────────────────────────────────────────────────────────
 
 create table aircraft_maintenance (
@@ -211,8 +204,50 @@ create table fleet_forecast_overrides (
   unique(date, aircraft_category)
 );
 
+-- Stores every AI forecast output for explainability + delta comparisons
+create table forecast_signals (
+  id uuid primary key default uuid_generate_v4(),
+  signal_type text not null,               -- 'forecast_insight' | 'utilization_insight' | 'learning_insight'
+  aircraft_category text,                  -- null = fleet-wide
+  date_range_start date not null,
+  date_range_end date not null,
+  confidence text not null default 'medium'
+    check (confidence in ('high', 'medium', 'low')),
+  reason_codes text[] not null default '{}',
+  model_version text not null default 'claude-sonnet-4-6',
+  payload jsonb not null default '{}',
+  created_at timestamptz not null default now()
+);
+
+create index forecast_signals_date_category_idx
+  on forecast_signals (date_range_start, aircraft_category);
+create index forecast_signals_created_at_idx
+  on forecast_signals (created_at desc);
+
+-- Tracks whether recommendations were acted on + realized ROI
+create table recommendation_outcomes (
+  id uuid primary key default uuid_generate_v4(),
+  recommendation_type text not null         -- 'reposition' | 'maintenance_window'
+    check (recommendation_type in ('reposition', 'maintenance_window')),
+  aircraft_id uuid references aircraft(id) on delete set null,
+  tail_number text,
+  recommended_at timestamptz not null default now(),
+  accepted_at timestamptz,
+  executed_at timestamptz,
+  realized_revenue_delta numeric(10,2),
+  realized_hours_gained numeric(6,1),
+  outcome_status text not null default 'pending'
+    check (outcome_status in ('pending', 'accepted', 'rejected', 'executed', 'abandoned')),
+  payload jsonb not null default '{}'       -- snapshot of the full recommendation at time of creation
+);
+
+create index recommendation_outcomes_aircraft_idx
+  on recommendation_outcomes (aircraft_id);
+create index recommendation_outcomes_status_idx
+  on recommendation_outcomes (outcome_status);
+
 -- ─────────────────────────────────────────────────────────────────────────────
--- Migration 003: Route Plans
+-- Route Plans
 -- ─────────────────────────────────────────────────────────────────────────────
 
 create table route_plans (
@@ -253,6 +288,8 @@ alter table audit_logs enable row level security;
 alter table airports enable row level security;
 alter table aircraft_maintenance enable row level security;
 alter table fleet_forecast_overrides enable row level security;
+alter table forecast_signals enable row level security;
+alter table recommendation_outcomes enable row level security;
 alter table route_plans enable row level security;
 
 create policy "staff_all" on clients                  for all using (auth.role() = 'authenticated');
@@ -265,4 +302,6 @@ create policy "staff_all" on audit_logs               for all using (auth.role()
 create policy "staff_all" on airports                 for all using (auth.role() = 'authenticated');
 create policy "staff_all" on aircraft_maintenance     for all using (auth.role() = 'authenticated');
 create policy "staff_all" on fleet_forecast_overrides for all using (auth.role() = 'authenticated');
+create policy "staff_all" on forecast_signals         for all using (auth.role() = 'authenticated');
+create policy "staff_all" on recommendation_outcomes  for all using (auth.role() = 'authenticated');
 create policy "staff_all" on route_plans              for all using (auth.role() = 'authenticated');

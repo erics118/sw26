@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
-import type { ConfirmedDemandDay, ExpectedDemandDay } from "./types";
+import type {
+  ConfirmedDemandDay,
+  ExpectedDemandDay,
+  PipelineDemandDay,
+} from "./types";
 import { dateRange, getDayOfWeek } from "./utils";
 
 // Near-term horizon: use confirmed flights for this many days out
@@ -198,14 +202,100 @@ export async function computeExpectedDemand(
         expectedHours = baseline * dowMultiplier * peakMultiplier;
       }
 
+      const p80Hours = isConfirmed
+        ? Math.round(expectedHours * 10) / 10
+        : Math.round(expectedHours * 1.25 * 10) / 10;
+
       result.push({
         date,
         aircraft_category: cat,
         expected_total_hours: Math.round(expectedHours * 10) / 10,
+        p80_hours: p80Hours,
         baseline_hours: Math.round(baseline * 10) / 10,
         dow_multiplier: Math.round(dowMultiplier * 100) / 100,
         peak_multiplier: peakMultiplier,
         is_confirmed: isConfirmed,
+      });
+    }
+  }
+
+  return result.sort((a, b) => (a.date < b.date ? -1 : 1));
+}
+
+// Stage win probabilities
+const STAGE_WIN_PROB: Record<string, number> = {
+  pending: 0.2,
+  quoted: 0.4,
+  negotiating: 0.65,
+  verbally_confirmed: 0.85,
+};
+
+/**
+ * Compute probability-weighted pipeline demand from open quotes.
+ * Groups by date (from scheduled_departure_time) and category.
+ * Applies pricing sensitivity: if quoted_price > category median, multiply p_win by 0.90.
+ */
+export async function computePipelineDemand(
+  supabase: SupabaseClient<Database>,
+  startDate: Date,
+  endDate: Date,
+  category?: string,
+): Promise<PipelineDemandDay[]> {
+  // Fetch pipeline quotes
+  let pipelineQuery = supabase
+    .from("quotes")
+    .select(
+      "chosen_aircraft_category, scheduled_departure_time, scheduled_total_hours, status",
+    )
+    .in("status", ["quoted", "negotiating", "verbally_confirmed", "pending"])
+    .not("scheduled_departure_time", "is", null)
+    .gte("scheduled_departure_time", startDate.toISOString())
+    .lte("scheduled_departure_time", endDate.toISOString());
+
+  if (category)
+    pipelineQuery = pipelineQuery.eq("chosen_aircraft_category", category);
+
+  const { data: pipelineQuotes } = await pipelineQuery;
+  if (!pipelineQuotes) return [];
+
+  // quoted_price column does not exist in the current schema — skip pricing sensitivity
+  // and use stage priors only.
+
+  // Group by date + category
+  const map: Record<
+    string,
+    Record<string, { weightedHours: number; count: number }>
+  > = {};
+
+  for (const q of pipelineQuotes) {
+    const date = q.scheduled_departure_time!.slice(0, 10);
+    const cat = q.chosen_aircraft_category ?? "unknown";
+    const status = q.status ?? "quoted";
+    const pWin = STAGE_WIN_PROB[status] ?? 0.4;
+
+    const weightedHours = pWin * (q.scheduled_total_hours ?? 0);
+
+    if (!map[date]) map[date] = {};
+    if (!map[date][cat]) map[date][cat] = { weightedHours: 0, count: 0 };
+    const entry = map[date][cat];
+    if (entry) {
+      entry.weightedHours += weightedHours;
+      entry.count += 1;
+    }
+  }
+
+  const result: PipelineDemandDay[] = [];
+  for (const date of Object.keys(map)) {
+    const dayMap = map[date];
+    if (!dayMap) continue;
+    for (const cat of Object.keys(dayMap)) {
+      const entry = dayMap[cat];
+      if (!entry) continue;
+      result.push({
+        date,
+        aircraft_category: cat,
+        pipeline_hours: Math.round(entry.weightedHours * 10) / 10,
+        quote_count: entry.count,
       });
     }
   }

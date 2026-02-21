@@ -32,33 +32,54 @@ export function RecommendationCard({ rec }: RecommendationCardProps) {
               <p className="text-xs text-zinc-500">
                 {rec.move_from_airport} → {rec.move_to_airport}
               </p>
+              <p className="text-xs text-zinc-500">{rec.one_line_reason}</p>
             </div>
           </div>
           <span className="shrink-0 rounded bg-amber-400/10 px-2 py-0.5 text-xs font-medium text-amber-400">
             reposition
           </span>
         </div>
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="mt-3 grid grid-cols-4 gap-2">
           <div>
-            <p className="text-[10px] text-zinc-600">Repo cost</p>
+            <p className="text-[10px] text-zinc-600">Reposition cost</p>
             <p className="tabnum text-xs font-medium text-zinc-300">
               ${rec.estimated_reposition_cost.toLocaleString()}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-zinc-600">Repo hours</p>
+            <p className="text-[10px] text-zinc-600">Flight time</p>
             <p className="tabnum text-xs font-medium text-zinc-300">
               {formatFlightTime(rec.estimated_reposition_hours)}
             </p>
           </div>
           <div>
-            <p className="text-[10px] text-zinc-600">Util gain</p>
+            <p className="text-[10px] text-zinc-600">Hours gained</p>
             <p className="tabnum text-xs font-medium text-emerald-400">
               +{formatFlightTime(rec.expected_utilization_gain)}
             </p>
           </div>
+          <div>
+            <p className="text-[10px] text-zinc-600">Return</p>
+            <p
+              className={`tabnum text-xs font-medium ${
+                rec.roi_score >= 0.5
+                  ? "text-emerald-400"
+                  : rec.roi_score >= 0.15
+                    ? "text-amber-400"
+                    : "text-red-400"
+              }`}
+            >
+              {rec.roi_score >= 0 ? "+" : ""}
+              {(rec.roi_score * 100).toFixed(0)}%
+            </p>
+          </div>
         </div>
         <p className="mt-2 text-xs text-zinc-600">{rec.reason}</p>
+        {!rec.feasibility_passed && (
+          <div className="mt-2 rounded bg-red-900/20 px-2 py-1 text-[10px] text-red-400">
+            Feasibility check failed — verify manually
+          </div>
+        )}
       </div>
     );
   }
@@ -101,6 +122,11 @@ export function RecommendationCard({ rec }: RecommendationCardProps) {
         </span>
       </div>
       <p className="mt-2 text-xs text-zinc-600">{rec.reason}</p>
+      {!rec.feasibility_passed && (
+        <div className="mt-2 rounded bg-red-900/20 px-2 py-1 text-[10px] text-red-400">
+          Feasibility check failed — verify manually
+        </div>
+      )}
     </div>
   );
 }

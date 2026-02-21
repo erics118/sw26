@@ -6,22 +6,19 @@ import { CapacityGapCard } from "@/components/FleetForecasting/CapacityGapCard";
 import { UtilizationBar } from "@/components/FleetForecasting/UtilizationBar";
 import { RecommendationCard } from "@/components/FleetForecasting/RecommendationCard";
 import { InsightBlock } from "@/components/FleetForecasting/InsightBlock";
-import {
-  AccuracyChart,
-  DelayReasonChart,
-} from "@/components/FleetForecasting/LearningChart";
+import { ScenarioPanel } from "@/components/FleetForecasting/ScenarioPanel";
 import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
-import { formatFlightTime } from "@/lib/format";
 import { useForecasterData } from "./hooks/useForecasterData";
 
-type Tab = "forecast" | "utilization" | "learning";
+type Tab = "forecast" | "utilization";
 type Horizon = 7 | 30 | 90;
+type Aggregation = "daily" | "weekly";
+type UtilView = "aircraft" | "base";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "forecast", label: "Fleet Forecast" },
   { id: "utilization", label: "Underutilization" },
-  { id: "learning", label: "Post-Flight Learning" },
 ];
 
 const FLAG_VARIANT: Record<string, "red" | "amber" | "yellow"> = {
@@ -33,6 +30,9 @@ const FLAG_VARIANT: Record<string, "red" | "amber" | "yellow"> = {
 export default function FleetForecastingPage() {
   const [activeTab, setActiveTab] = useState<Tab>("forecast");
   const [horizon, setHorizon] = useState<Horizon>(7);
+  const [aggregation, setAggregation] = useState<Aggregation>("daily");
+  const [truthMode, setTruthMode] = useState(false);
+  const [utilView, setUtilView] = useState<UtilView>("aircraft");
 
   const {
     forecastData,
@@ -44,21 +44,13 @@ export default function FleetForecastingPage() {
     utilLoading,
     utilInsight,
     utilInsightLoading,
-    accuracy,
-    delays,
-    learningInsight,
-    learningLoading,
     loadTab,
   } = useForecasterData();
-
-  // ─── Tab switching & horizon changes ───────────────────────────────────────
 
   useEffect(() => {
     loadTab(activeTab, horizon);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, horizon]);
-
-  // ─── Derived data ──────────────────────────────────────────────────────────
 
   const categories = forecastData
     ? [...new Set(forecastData.planes_needed.map((d) => d.aircraft_category))]
@@ -71,11 +63,36 @@ export default function FleetForecastingPage() {
     ? forecastData.planes_needed.filter((d) => d.status === "surplus").length
     : 0;
 
-  // ─── Render ────────────────────────────────────────────────────────────────
+  const byBaseData = (() => {
+    if (!utilData?.aircraft) return [];
+    const baseMap: Record<
+      string,
+      {
+        base: string;
+        aircraft: typeof utilData.aircraft;
+        totalIdleRisk: number;
+        count: number;
+      }
+    > = {};
+    for (const ac of utilData.aircraft) {
+      const base = ac.home_base_icao ?? "—";
+      if (!baseMap[base]) {
+        baseMap[base] = { base, aircraft: [], totalIdleRisk: 0, count: 0 };
+      }
+      const entry = baseMap[base];
+      if (entry) {
+        entry.aircraft.push(ac);
+        entry.totalIdleRisk += ac.idle_risk_score;
+        entry.count += 1;
+      }
+    }
+    return Object.values(baseMap).sort(
+      (a, b) => b.totalIdleRisk / b.count - a.totalIdleRisk / a.count,
+    );
+  })();
 
   return (
     <div className="p-8">
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-zinc-100">
           Fleet Forecasting
@@ -98,29 +115,76 @@ export default function FleetForecastingPage() {
             }`}
           >
             {tab.label}
+            {tab.id === "utilization" && recsData?.recommendations?.length
+              ? ` (${recsData.recommendations.length})`
+              : ""}
           </button>
         ))}
       </div>
 
-      {/* ─── Tab 1: Fleet Forecast ─────────────────────────────────────── */}
+      {/* ─── Fleet Forecast ────────────────────────────────────────────── */}
       {activeTab === "forecast" && (
         <div className="space-y-6">
-          {/* Horizon selector + summary KPIs */}
           <div className="flex items-center justify-between">
-            <div className="flex gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 p-1">
-              {([7, 30, 90] as Horizon[]).map((d) => (
-                <button
-                  key={d}
-                  onClick={() => setHorizon(d)}
-                  className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
-                    horizon === d
-                      ? "bg-amber-400 text-zinc-950"
-                      : "text-zinc-500 hover:text-zinc-300"
-                  }`}
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-600">Horizon:</span>
+              <div className="flex gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 p-1">
+                {([7, 30, 90] as Horizon[]).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setHorizon(d)}
+                    className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                      horizon === d
+                        ? "bg-amber-400 text-zinc-950"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1 rounded-md border border-zinc-800 bg-zinc-900 p-1">
+                {(["daily", "weekly"] as const).map((a) => (
+                  <button
+                    key={a}
+                    onClick={() => setAggregation(a)}
+                    className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                      aggregation === a
+                        ? "bg-amber-400 text-zinc-950"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {a === "daily" ? "Daily" : "Weekly"}
+                  </button>
+                ))}
+              </div>
+              {horizon === 7 && (
+                <div
+                  className="flex gap-1 rounded-md border border-zinc-800 bg-zinc-900 p-1"
+                  title="Forecast = probability-weighted demand · Pipeline = raw bookings & quotes"
                 >
-                  {d}d
-                </button>
-              ))}
+                  <button
+                    onClick={() => setTruthMode(false)}
+                    className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                      !truthMode
+                        ? "bg-zinc-700 text-zinc-100"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    Forecast
+                  </button>
+                  <button
+                    onClick={() => setTruthMode(true)}
+                    className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                      truthMode
+                        ? "bg-zinc-700 text-zinc-100"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    Pipeline
+                  </button>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 text-xs text-zinc-600">
               {totalShortages > 0 && (
@@ -141,10 +205,8 @@ export default function FleetForecastingPage() {
             </div>
           </div>
 
-          {/* AI Insight */}
           <InsightBlock insight={forecastInsight} loading={insightLoading} />
 
-          {/* Per-category charts + gap cards */}
           {forecastLoading ? (
             <div className="grid grid-cols-2 gap-4">
               {[0, 1].map((i) => (
@@ -171,22 +233,29 @@ export default function FleetForecastingPage() {
                   />
                   <ForecastChart
                     data={forecastData?.planes_needed ?? []}
+                    demand={forecastData?.demand ?? []}
+                    pipeline={forecastData?.pipeline ?? []}
                     category={cat}
+                    aggregation={aggregation}
+                    onBarClick={(date) => {
+                      void date;
+                    }}
+                    truthMode={truthMode}
                   />
                 </Card>
               ))}
             </div>
           )}
+
+          <ScenarioPanel forecastData={forecastData} />
         </div>
       )}
 
-      {/* ─── Tab 2: Underutilization ───────────────────────────────────── */}
+      {/* ─── Underutilization ──────────────────────────────────────────── */}
       {activeTab === "utilization" && (
         <div className="space-y-6">
-          {/* AI Insight */}
           <InsightBlock insight={utilInsight} loading={utilInsightLoading} />
 
-          {/* Category summary KPIs */}
           {utilLoading ? (
             <div className="grid grid-cols-4 gap-4">
               {[0, 1, 2, 3].map((i) => (
@@ -209,7 +278,7 @@ export default function FleetForecastingPage() {
                       {(cat.avg_utilization_rate * 100).toFixed(0)}%
                     </p>
                     <p className="mt-0.5 text-xs text-zinc-600">
-                      avg utilization
+                      flight time usage
                     </p>
                     <UtilizationBar
                       value={cat.avg_utilization_rate}
@@ -227,15 +296,38 @@ export default function FleetForecastingPage() {
             )
           )}
 
-          {/* Aircraft table */}
           <Card>
-            <div className="border-b border-zinc-800 px-5 py-4">
-              <h2 className="text-sm font-semibold text-zinc-300">
-                Aircraft — Ranked by Idle Risk
-              </h2>
-              <p className="mt-0.5 text-xs text-zinc-600">
-                Last 30 days · {utilData?.aircraft.length ?? 0} aircraft
-              </p>
+            <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold text-zinc-300">
+                  Aircraft — Ranked by Idle Risk
+                </h2>
+                <p className="mt-0.5 text-xs text-zinc-600">
+                  Last 30 days · {utilData?.aircraft.length ?? 0} aircraft
+                </p>
+              </div>
+              <div className="flex gap-1 rounded-md border border-zinc-800 bg-zinc-950 p-0.5">
+                <button
+                  onClick={() => setUtilView("aircraft")}
+                  className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                    utilView === "aircraft"
+                      ? "bg-zinc-800 text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  By Aircraft
+                </button>
+                <button
+                  onClick={() => setUtilView("base")}
+                  className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                    utilView === "base"
+                      ? "bg-zinc-800 text-zinc-100"
+                      : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  By Base
+                </button>
+              </div>
             </div>
             {utilLoading ? (
               <div className="p-8 text-center text-sm text-zinc-600">
@@ -245,7 +337,7 @@ export default function FleetForecastingPage() {
               <div className="p-8 text-center text-sm text-zinc-600">
                 No aircraft data. Complete flights to see utilization.
               </div>
-            ) : (
+            ) : utilView === "aircraft" ? (
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-zinc-800">
@@ -253,10 +345,10 @@ export default function FleetForecastingPage() {
                       Aircraft
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
-                      Utilization
+                      Risk Score
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
-                      Idle days
+                      Days idle
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
                       Flags
@@ -278,8 +370,13 @@ export default function FleetForecastingPage() {
                         </p>
                       </td>
                       <td className="px-5 py-3">
-                        <div className="w-32">
-                          <UtilizationBar value={ac.utilization_rate} />
+                        <div className="flex items-center gap-2">
+                          <div className="w-20">
+                            <UtilizationBar value={ac.idle_risk_score} />
+                          </div>
+                          <span className="tabnum text-xs text-zinc-500">
+                            {(ac.utilization_rate * 100).toFixed(0)}% util
+                          </span>
                         </div>
                       </td>
                       <td className="tabnum px-5 py-3 text-zinc-400">
@@ -299,166 +396,94 @@ export default function FleetForecastingPage() {
                               </Badge>
                             ))
                           )}
+                          {ac.deadhead_waste_score > 0.15 && (
+                            <Badge variant="yellow">
+                              {(ac.deadhead_waste_score * 100).toFixed(0)}%
+                              empty repositions
+                            </Badge>
+                          )}
                         </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-zinc-800">
+                    <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
+                      Base
+                    </th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
+                      Aircraft
+                    </th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
+                      Avg Idle Risk
+                    </th>
+                    <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
+                      Highest Risk Tail
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {byBaseData.map((entry) => {
+                    const avgIdleRisk =
+                      entry.count > 0 ? entry.totalIdleRisk / entry.count : 0;
+                    const highestRisk = entry.aircraft.reduce((best, ac) =>
+                      ac.idle_risk_score > best.idle_risk_score ? ac : best,
+                    );
+                    return (
+                      <tr
+                        key={entry.base}
+                        className="border-b border-zinc-800/50 hover:bg-zinc-800/20"
+                      >
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-zinc-100">
+                            {entry.base}
+                          </p>
+                        </td>
+                        <td className="tabnum px-5 py-3 text-zinc-400">
+                          {entry.count}
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-20">
+                              <UtilizationBar value={avgIdleRisk} />
+                            </div>
+                            <span className="tabnum text-xs text-zinc-500">
+                              {(avgIdleRisk * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-zinc-100">
+                            {highestRisk?.tail_number ?? "—"}
+                          </p>
+                          <p className="text-xs text-zinc-500">
+                            {highestRisk
+                              ? `${(highestRisk.idle_risk_score * 100).toFixed(0)}% risk`
+                              : ""}
+                          </p>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </Card>
 
-          {/* Recommendations */}
-          {recsData && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-3">
-                <h3 className="text-xs font-semibold tracking-widest text-zinc-600 uppercase">
-                  Reposition ({recsData.reposition.length})
-                </h3>
-                {recsData.reposition.length === 0 ? (
-                  <p className="text-xs text-zinc-600">
-                    No reposition opportunities
-                  </p>
-                ) : (
-                  recsData.reposition.map((r, i) => (
-                    <RecommendationCard key={i} rec={r} />
-                  ))
-                )}
-              </div>
-              <div className="space-y-3">
-                <h3 className="text-xs font-semibold tracking-widest text-zinc-600 uppercase">
-                  Maintenance windows ({recsData.maintenance_windows.length})
-                </h3>
-                {recsData.maintenance_windows.length === 0 ? (
-                  <p className="text-xs text-zinc-600">
-                    No low-demand windows detected
-                  </p>
-                ) : (
-                  recsData.maintenance_windows.map((r, i) => (
-                    <RecommendationCard key={i} rec={r} />
-                  ))
-                )}
-              </div>
+          {recsData?.recommendations && recsData.recommendations.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-xs font-semibold tracking-widest text-zinc-600 uppercase">
+                Recommended Actions ({recsData.recommendations.length})
+              </h3>
+              {recsData.recommendations.map((s, i) => (
+                <RecommendationCard key={i} rec={s.rec} />
+              ))}
             </div>
           )}
-        </div>
-      )}
-
-      {/* ─── Tab 3: Post-Flight Learning ──────────────────────────────── */}
-      {activeTab === "learning" && (
-        <div className="space-y-6">
-          {/* AI Insight */}
-          <InsightBlock insight={learningInsight} loading={learningLoading} />
-
-          <div className="grid grid-cols-2 gap-4">
-            {/* Forecast accuracy */}
-            <Card>
-              <div className="border-b border-zinc-800 px-5 py-4">
-                <h2 className="text-sm font-semibold text-zinc-300">
-                  Forecast Accuracy by Category
-                </h2>
-                <p className="mt-0.5 text-xs text-zinc-600">
-                  % error vs actuals · last 90 days
-                </p>
-              </div>
-              <div className="p-4">
-                {learningLoading ? (
-                  <div className="h-40 animate-pulse rounded bg-zinc-800" />
-                ) : (
-                  <AccuracyChart accuracy={accuracy} />
-                )}
-                {accuracy.length > 0 && (
-                  <table className="mt-4 w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-zinc-800">
-                        <th className="py-2 text-left font-semibold tracking-widest text-zinc-600 uppercase">
-                          Category
-                        </th>
-                        <th className="py-2 text-right font-semibold tracking-widest text-zinc-600 uppercase">
-                          Predicted
-                        </th>
-                        <th className="py-2 text-right font-semibold tracking-widest text-zinc-600 uppercase">
-                          Actual
-                        </th>
-                        <th className="py-2 text-right font-semibold tracking-widest text-zinc-600 uppercase">
-                          Error
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {accuracy.map((a) => (
-                        <tr
-                          key={a.aircraft_category}
-                          className="border-b border-zinc-800/50"
-                        >
-                          <td className="py-2 text-zinc-300">
-                            {a.aircraft_category}
-                          </td>
-                          <td className="tabnum py-2 text-right text-zinc-400">
-                            {formatFlightTime(a.predicted_hours)}
-                          </td>
-                          <td className="tabnum py-2 text-right text-zinc-400">
-                            {formatFlightTime(a.actual_hours)}
-                          </td>
-                          <td
-                            className={`tabnum py-2 text-right font-medium ${
-                              Math.abs(a.error_pct) < 10
-                                ? "text-emerald-400"
-                                : Math.abs(a.error_pct) < 25
-                                  ? "text-amber-400"
-                                  : "text-red-400"
-                            }`}
-                          >
-                            {a.error_pct > 0 ? "+" : ""}
-                            {a.error_pct.toFixed(1)}%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </Card>
-
-            {/* Delay reasons */}
-            <Card>
-              <div className="border-b border-zinc-800 px-5 py-4">
-                <h2 className="text-sm font-semibold text-zinc-300">
-                  Top Delay Reasons
-                </h2>
-                <p className="mt-0.5 text-xs text-zinc-600">
-                  Count of delay events · last 90 days
-                </p>
-              </div>
-              <div className="p-4">
-                {learningLoading ? (
-                  <div className="h-40 animate-pulse rounded bg-zinc-800" />
-                ) : (
-                  <DelayReasonChart delays={delays} />
-                )}
-                {delays.length > 0 && (
-                  <div className="mt-4 space-y-2">
-                    {delays.slice(0, 5).map((d) => (
-                      <div
-                        key={d.reason_code}
-                        className="flex items-center justify-between text-xs"
-                      >
-                        <span className="text-zinc-400 capitalize">
-                          {d.reason_code}
-                        </span>
-                        <div className="flex items-center gap-3">
-                          <span className="tabnum text-zinc-600">
-                            {formatFlightTime(d.total_hours_lost)} lost
-                          </span>
-                          <Badge variant="zinc">{d.count}×</Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
         </div>
       )}
     </div>

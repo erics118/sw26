@@ -1,5 +1,3 @@
-"use client";
-
 import type { PlanesNeeded } from "@/lib/forecasting/types";
 
 interface CapacityGapCardProps {

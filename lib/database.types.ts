@@ -403,6 +403,78 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["airports"]["Insert"]>;
         Relationships: [];
       };
+      forecast_signals: {
+        Row: {
+          id: string;
+          signal_type: string;
+          aircraft_category: string | null;
+          date_range_start: string;
+          date_range_end: string;
+          confidence: "high" | "medium" | "low";
+          reason_codes: string[];
+          model_version: string;
+          payload: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          signal_type: string;
+          aircraft_category?: string | null;
+          date_range_start: string;
+          date_range_end: string;
+          confidence?: "high" | "medium" | "low";
+          reason_codes?: string[];
+          model_version?: string;
+          payload?: Json;
+          created_at?: string;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["forecast_signals"]["Insert"]
+        >;
+        Relationships: [];
+      };
+      recommendation_outcomes: {
+        Row: {
+          id: string;
+          recommendation_type: "reposition" | "maintenance_window";
+          aircraft_id: string | null;
+          tail_number: string | null;
+          recommended_at: string;
+          accepted_at: string | null;
+          executed_at: string | null;
+          realized_revenue_delta: number | null;
+          realized_hours_gained: number | null;
+          outcome_status:
+            | "pending"
+            | "accepted"
+            | "rejected"
+            | "executed"
+            | "abandoned";
+          payload: Json;
+        };
+        Insert: {
+          id?: string;
+          recommendation_type: "reposition" | "maintenance_window";
+          aircraft_id?: string | null;
+          tail_number?: string | null;
+          recommended_at?: string;
+          accepted_at?: string | null;
+          executed_at?: string | null;
+          realized_revenue_delta?: number | null;
+          realized_hours_gained?: number | null;
+          outcome_status?:
+            | "pending"
+            | "accepted"
+            | "rejected"
+            | "executed"
+            | "abandoned";
+          payload?: Json;
+        };
+        Update: Partial<
+          Database["public"]["Tables"]["recommendation_outcomes"]["Insert"]
+        >;
+        Relationships: [];
+      };
       route_plans: {
         Row: {
           id: string;
@@ -473,6 +545,10 @@ export type AircraftMaintenance =
   Database["public"]["Tables"]["aircraft_maintenance"]["Row"];
 export type FleetForecastOverride =
   Database["public"]["Tables"]["fleet_forecast_overrides"]["Row"];
+export type ForecastSignal =
+  Database["public"]["Tables"]["forecast_signals"]["Row"];
+export type RecommendationOutcome =
+  Database["public"]["Tables"]["recommendation_outcomes"]["Row"];
 
 export type TripLeg = {
   from_icao: string;

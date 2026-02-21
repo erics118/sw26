@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { computeCapacity } from "@/lib/forecasting/capacity";
-import { computeExpectedDemand } from "@/lib/forecasting/demand";
+import {
+  computeExpectedDemand,
+  computePipelineDemand,
+} from "@/lib/forecasting/demand";
 import { computePlanesNeeded } from "@/lib/forecasting/planes-needed";
 import { addDays } from "@/lib/forecasting/utils";
 import type { ForecastSummary } from "@/lib/forecasting/types";
@@ -22,16 +25,18 @@ export async function GET(request: Request) {
   startDate.setUTCHours(0, 0, 0, 0);
   const endDate = addDays(startDate, days - 1);
 
-  const [capacity, demand] = await Promise.all([
+  const [capacity, demand, pipeline] = await Promise.all([
     computeCapacity(supabase, startDate, endDate, category),
     computeExpectedDemand(supabase, startDate, endDate, category),
+    computePipelineDemand(supabase, startDate, endDate, category),
   ]);
 
-  const planesNeeded = computePlanesNeeded(capacity, demand);
+  const planesNeeded = computePlanesNeeded(capacity, demand, pipeline);
 
   const summary: ForecastSummary = {
     capacity,
     demand,
+    pipeline,
     planes_needed: planesNeeded,
     horizon_days: days,
     generated_at: new Date().toISOString(),

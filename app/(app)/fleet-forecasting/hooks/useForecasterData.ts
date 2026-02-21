@@ -4,11 +4,9 @@ import type {
   ForecastSummary,
   UtilizationSummary,
   RecommendationSummary,
-  ForecastAccuracy,
-  DelayReasonBreakdown,
 } from "@/lib/forecasting/types";
 
-type Tab = "forecast" | "utilization" | "learning";
+type Tab = "forecast" | "utilization";
 type Horizon = 7 | 30 | 90;
 
 export function useForecasterData() {
@@ -27,13 +25,6 @@ export function useForecasterData() {
   const [utilLoading, setUtilLoading] = useState(false);
   const [utilInsight, setUtilInsight] = useState<ForecastInsight | null>(null);
   const [utilInsightLoading, setUtilInsightLoading] = useState(false);
-
-  // Learning tab state
-  const [accuracy, setAccuracy] = useState<ForecastAccuracy[]>([]);
-  const [delays, setDelays] = useState<DelayReasonBreakdown[]>([]);
-  const [learningInsight, setLearningInsight] =
-    useState<ForecastInsight | null>(null);
-  const [learningLoading, setLearningLoading] = useState(false);
 
   // ─── Fetch functions ────────────────────────────────────────────────────────
 
@@ -96,27 +87,6 @@ export function useForecasterData() {
     }
   }, []);
 
-  const fetchLearning = useCallback(async () => {
-    setLearningLoading(true);
-    try {
-      const res = await fetch("/api/fleet-forecasting/insights", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tab: "learning" }),
-      });
-      const data = (await res.json()) as {
-        insight: ForecastInsight;
-        accuracy: ForecastAccuracy[];
-        delay_reasons: DelayReasonBreakdown[];
-      };
-      setLearningInsight(data.insight);
-      setAccuracy(data.accuracy ?? []);
-      setDelays(data.delay_reasons ?? []);
-    } finally {
-      setLearningLoading(false);
-    }
-  }, []);
-
   const loadTab = useCallback(
     (tab: Tab, horizon: Horizon) => {
       if (tab === "forecast") {
@@ -125,8 +95,6 @@ export function useForecasterData() {
       } else if (tab === "utilization") {
         if (!utilData) fetchUtilization();
         if (!utilInsight) fetchUtilInsight();
-      } else if (tab === "learning") {
-        if (!learningInsight) fetchLearning();
       }
     },
     [
@@ -134,10 +102,8 @@ export function useForecasterData() {
       fetchForecastInsight,
       fetchUtilization,
       fetchUtilInsight,
-      fetchLearning,
       utilData,
       utilInsight,
-      learningInsight,
     ],
   );
 
@@ -151,10 +117,6 @@ export function useForecasterData() {
     utilLoading,
     utilInsight,
     utilInsightLoading,
-    accuracy,
-    delays,
-    learningInsight,
-    learningLoading,
     loadTab,
   };
 }

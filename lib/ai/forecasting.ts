@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import type {
   ForecastSummary,
   UtilizationSummary,
@@ -16,10 +17,53 @@ export interface ForecastInsight {
   confidence: "high" | "medium" | "low";
 }
 
+// Extract short reason codes from action strings (first 4 words, snake_cased)
+function actionsToReasonCodes(actions: string[]): string[] {
+  return actions.slice(0, 3).map((a) =>
+    a
+      .split(" ")
+      .slice(0, 4)
+      .join("_")
+      .toLowerCase()
+      .replace(/[^a-z0-9_]/g, ""),
+  );
+}
+
+// Write an AI output row to forecast_signals (best-effort, never throws)
+async function writeSignal(
+  supabase: SupabaseClient,
+  signalType: string,
+  insight: ForecastInsight,
+  dateRangeStart: string,
+  dateRangeEnd: string,
+  aircraftCategory?: string,
+  extraPayload?: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await supabase.from("forecast_signals").insert({
+      signal_type: signalType,
+      aircraft_category: aircraftCategory ?? null,
+      date_range_start: dateRangeStart,
+      date_range_end: dateRangeEnd,
+      confidence: insight.confidence,
+      reason_codes: actionsToReasonCodes(insight.actions),
+      model_version: MODEL,
+      payload: {
+        summary: insight.summary,
+        actions: insight.actions,
+        ...extraPayload,
+      },
+    });
+  } catch {
+    // Signal logging is non-critical — swallow errors silently
+  }
+}
+
 // ─── Fleet Forecast Insight ───────────────────────────────────────────────────
 
 export async function generateForecastInsight(
   forecastData: ForecastSummary,
+  supabase?: SupabaseClient,
 ): Promise<ForecastInsight> {
   // Build a concise data summary to send to Claude
   const shortages = forecastData.planes_needed.filter(
@@ -84,24 +128,32 @@ Be specific: mention aircraft categories, dates, and numbers. No markdown. Retur
 
   const raw =
     message.content[0]?.type === "text" ? message.content[0].text : "{}";
+  const fallback: ForecastInsight = {
+    summary: "Forecast data processed. Review charts for detailed breakdown.",
+    actions: [
+      "Review capacity gaps by category",
+      "Check upcoming confirmed flights",
+      "Update peak multipliers if needed",
+    ],
+    confidence: "medium",
+  };
+  let insight: ForecastInsight;
   try {
-    return JSON.parse(
+    insight = JSON.parse(
       raw
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/, "")
         .trim(),
     ) as ForecastInsight;
   } catch {
-    return {
-      summary: "Forecast data processed. Review charts for detailed breakdown.",
-      actions: [
-        "Review capacity gaps by category",
-        "Check upcoming confirmed flights",
-        "Update peak multipliers if needed",
-      ],
-      confidence: "medium",
-    };
+    insight = fallback;
   }
+  if (supabase) {
+    const start = forecastData.generated_at.slice(0, 10);
+    const end = forecastData.planes_needed.at(-1)?.date ?? start;
+    await writeSignal(supabase, "forecast_insight", insight, start, end);
+  }
+  return insight;
 }
 
 // ─── Utilization Insight ──────────────────────────────────────────────────────
@@ -109,6 +161,7 @@ Be specific: mention aircraft categories, dates, and numbers. No markdown. Retur
 export async function generateUtilizationInsight(
   utilizationData: UtilizationSummary,
   recommendations: RecommendationSummary,
+  supabase?: SupabaseClient,
 ): Promise<ForecastInsight> {
   const underutilized = utilizationData.aircraft.filter((a) =>
     a.flags.includes("underutilized"),
@@ -164,23 +217,35 @@ Focus on highest-impact actions. Mention specific aircraft and airports.`,
 
   const raw =
     message.content[0]?.type === "text" ? message.content[0].text : "{}";
+  const fallback: ForecastInsight = {
+    summary: `${underutilized.length} aircraft flagged as underutilized. Review reposition recommendations.`,
+    actions: [
+      "Execute top reposition recommendations",
+      "Schedule maintenance during low-demand windows",
+    ],
+    confidence: "medium",
+  };
+  let insight: ForecastInsight;
   try {
-    return JSON.parse(
+    insight = JSON.parse(
       raw
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/, "")
         .trim(),
     ) as ForecastInsight;
   } catch {
-    return {
-      summary: `${underutilized.length} aircraft flagged as underutilized. Review reposition recommendations.`,
-      actions: [
-        "Execute top reposition recommendations",
-        "Schedule maintenance during low-demand windows",
-      ],
-      confidence: "medium",
-    };
+    insight = fallback;
   }
+  if (supabase) {
+    await writeSignal(
+      supabase,
+      "utilization_insight",
+      insight,
+      utilizationData.period_start,
+      utilizationData.period_end,
+    );
+  }
+  return insight;
 }
 
 // ─── Post-Flight Learning Insight ────────────────────────────────────────────
@@ -188,6 +253,7 @@ Focus on highest-impact actions. Mention specific aircraft and airports.`,
 export async function generateLearningInsight(
   accuracy: ForecastAccuracy[],
   delayReasons: DelayReasonBreakdown[],
+  supabase?: SupabaseClient,
 ): Promise<ForecastInsight> {
   const dataPayload = {
     forecast_accuracy: accuracy.map((a) => ({
@@ -232,23 +298,32 @@ Be specific about which categories are over/under-forecast and why.`,
 
   const raw =
     message.content[0]?.type === "text" ? message.content[0].text : "{}";
+  const fallback: ForecastInsight = {
+    summary:
+      "Forecast model is running. More flight data will improve accuracy over time.",
+    actions: [
+      "Log actual hours for all completed flights",
+      "Review day-of-week multipliers monthly",
+      "Add peak-day overrides for known events",
+    ],
+    confidence: "low",
+  };
+  let insight: ForecastInsight;
   try {
-    return JSON.parse(
+    insight = JSON.parse(
       raw
         .replace(/^```(?:json)?\s*/i, "")
         .replace(/\s*```$/, "")
         .trim(),
     ) as ForecastInsight;
   } catch {
-    return {
-      summary:
-        "Forecast model is running. More flight data will improve accuracy over time.",
-      actions: [
-        "Log actual hours for all completed flights",
-        "Review day-of-week multipliers monthly",
-        "Add peak-day overrides for known events",
-      ],
-      confidence: "low",
-    };
+    insight = fallback;
   }
+  if (supabase && accuracy.length > 0) {
+    const start =
+      accuracy[0]?.period_start ?? new Date().toISOString().slice(0, 10);
+    const end = accuracy[0]?.period_end ?? start;
+    await writeSignal(supabase, "learning_insight", insight, start, end);
+  }
+  return insight;
 }
