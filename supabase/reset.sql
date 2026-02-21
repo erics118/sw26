@@ -90,6 +90,7 @@ create table trips (
   pax_children integer default 0,
   pax_pets integer default 0,
   flexibility_hours integer default 0,
+  flexibility_hours_return integer default 0,
   special_needs text,
   catering_notes text,
   luggage_notes text,
@@ -303,98 +304,115 @@ create policy "staff_all" on route_plans              for all using (auth.role()
 -- ───────────────────────────────────────────────────────────────────────────────
 
 -- ── Aircraft ─────────────────────────────────────────────────────────────────
+-- created_at: when added to fleet (staggered 2020–2024 for realistic history)
 
-insert into aircraft (id, tail_number, category, range_nm, cabin_height_in, pax_capacity, fuel_burn_gph, has_wifi, has_bathroom, home_base_icao, notes, status, daily_available_hours) values
-  ('2a7f4c1e-8b3d-4f6a-9c2e-5d1b7a3f9e4c', 'N114PC', 'turboprop',  1845, 59.0,  8,  74.0, false, true,  'KVNY', 'Pilatus PC-12 NGX — 2021, workhorse short-haul, no wifi',  'active', 8),
-  ('6e3b9d5f-1c4a-4b7d-8e2f-3a9c6b1d4e7f', 'N388CJ', 'light',      2040, 57.5,  6,  96.0, false, false, 'KBUR', 'Citation CJ3 — 2014, no lavatory, ideal for quick hops',   'active', 8),
-  ('4c1d8f6a-7e2b-4d9c-a5f3-8b4e1c7d2f9a', 'N512PE', 'light',      2267, 59.0,  7, 103.0, true,  false, 'KLAS', 'Phenom 300E — 2022, Gogo Avance wifi, enclosed lav',       'active', 8),
-  ('8b5e2f9c-3d7a-4e1b-b6c4-2f8a5d3e7c1b', 'N744XL', 'midsize',    2100, 68.5,  9, 211.0, true,  true,  'KLAX', 'Citation XLS+ — 2019, full galley, ForeFlight avionics',   'active', 8),
-  ('1f9c4a7e-6b2d-4c8f-a3e5-7d1f9c4a6b2e', 'N291HK', 'midsize',    2540, 72.0,  8, 230.0, false, true,  'KTEB', 'Hawker 800XP — 2007, classic interior, reliable but no wifi', 'active', 8),
-  ('5a2d7f1c-9e4b-4a6d-8c1f-3b7a5d2f9c4e', 'N603LA', 'midsize',    2700, 72.0,  9, 218.0, true,  true,  'KMDW', 'Citation Latitude — 2021, flat-floor, dual-zone cabin',    'active', 8),
-  ('9c6f3a4d-2e8b-4d1c-b7f5-4a9c2e6f8d1b', 'N177CR', 'super-mid',  3200, 73.8, 10, 253.0, true,  true,  'KORD', 'Challenger 350 — 2023, Ka-band wifi, lie-flat seats',      'active', 8),
-  ('3d1b8e5f-7c2a-4f9b-a4d6-1e3f7c9b5a2d', 'N830GV', 'heavy',      4350, 74.5, 14, 338.0, true,  true,  'KMIA', 'Gulfstream G450 — 2016, full galley, entertainment suite', 'active', 8),
-  ('7f4a2c9e-1d6b-4e3f-9a7c-5b2e8f4a1d6c', 'N495CL', 'heavy',      4000, 73.5, 12, 295.0, true,  true,  'KJFK', 'Challenger 605 — 2018, club seating + divan, dual-zone',   'active', 8),
-  ('1b6d4e8f-5c3a-4b7d-8e2f-9c1b6d4e5f3a', 'N741GX', 'ultra-long', 7500, 77.0, 16, 412.0, true,  true,  'KBOS', 'Gulfstream G650ER — 2022, flagship, transatlantic range',  'active', 8);
+insert into aircraft (id, created_at, tail_number, category, range_nm, cabin_height_in, pax_capacity, fuel_burn_gph, has_wifi, has_bathroom, home_base_icao, notes, status, daily_available_hours, cruise_speed_kts, max_fuel_capacity_gal, min_runway_ft, etops_certified, max_payload_lbs, reserve_fuel_gal) values
+  ('2a7f4c1e-8b3d-4f6a-9c2e-5d1b7a3f9e4c', '2021-06-15 10:00:00+00', 'N114PC', 'turboprop',  1845, 59.0,  8,  74.0, false, true,  'KVNY', 'Pilatus PC-12 NGX — 2021, workhorse short-haul, no wifi',  'active', 8, 270, 332.0, 2500, false, 3500.0, 55.5),
+  ('6e3b9d5f-1c4a-4b7d-8e2f-3a9c6b1d4e7f', '2020-03-01 09:00:00+00', 'N388CJ', 'light',      2040, 57.5,  6,  96.0, false, false, 'KBUR', 'Citation CJ3 — 2014, no lavatory, ideal for quick hops',   'active', 8, 420, 1620.0, 3200, false, 2800.0, 72.0),
+  ('4c1d8f6a-7e2b-4d9c-a5f3-8b4e1c7d2f9a', '2022-08-20 14:00:00+00', 'N512PE', 'light',      2267, 59.0,  7, 103.0, true,  false, 'KLAS', 'Phenom 300E — 2022, Gogo Avance wifi, enclosed lav',       'active', 8, 450, 1840.0, 3500, false, 3200.0, 77.3),
+  ('8b5e2f9c-3d7a-4e1b-b6c4-2f8a5d3e7c1b', '2021-01-10 11:00:00+00', 'N744XL', 'midsize',    2100, 68.5,  9, 211.0, true,  true,  'KLAX', 'Citation XLS+ — 2019, full galley, ForeFlight avionics',   'active', 8, 470, 3850.0, 4500, false, 4500.0, 158.3),
+  ('1f9c4a7e-6b2d-4c8f-a3e5-7d1f9c4a6b2e', '2019-11-05 08:00:00+00', 'N291HK', 'midsize',    2540, 72.0,  8, 230.0, false, true,  'KTEB', 'Hawker 800XP — 2007, classic interior, reliable but no wifi', 'active', 8, 450, 4200.0, 5000, false, 5000.0, 172.5),
+  ('5a2d7f1c-9e4b-4a6d-8c1f-3b7a5d2f9c4e', '2021-12-01 16:00:00+00', 'N603LA', 'midsize',    2700, 72.0,  9, 218.0, true,  true,  'KMDW', 'Citation Latitude — 2021, flat-floor, dual-zone cabin',    'active', 8, 485, 4200.0, 4500, false, 5500.0, 163.5),
+  ('9c6f3a4d-2e8b-4d1c-b7f5-4a9c2e6f8d1b', '2023-09-15 10:30:00+00', 'N177CR', 'super-mid',  3200, 73.8, 10, 253.0, true,  true,  'KORD', 'Challenger 350 — 2023, Ka-band wifi, lie-flat seats',      'active', 8, 450, 5400.0, 5500, false, 6500.0, 189.8),
+  ('3d1b8e5f-7c2a-4f9b-a4d6-1e3f7c9b5a2d', '2020-07-20 09:00:00+00', 'N830GV', 'heavy',      4350, 74.5, 14, 338.0, true,  true,  'KMIA', 'Gulfstream G450 — 2016, full galley, entertainment suite', 'active', 8, 488, 7200.0, 5500, true, 8500.0, 253.5),
+  ('7f4a2c9e-1d6b-4e3f-9a7c-5b2e8f4a1d6c', '2021-04-12 13:00:00+00', 'N495CL', 'heavy',      4000, 73.5, 12, 295.0, true,  true,  'KJFK', 'Challenger 605 — 2018, club seating + divan, dual-zone',   'active', 8, 450, 6300.0, 5500, false, 7500.0, 221.3),
+  ('1b6d4e8f-5c3a-4b7d-8e2f-9c1b6d4e5f3a', '2022-11-01 08:00:00+00', 'N741GX', 'ultra-long', 7500, 77.0, 16, 412.0, true,  true,  'KBOS', 'Gulfstream G650ER — 2022, flagship, transatlantic range',  'active', 8, 516, 10100.0, 6000, true, 12000.0, 309.0);
 
 -- ── Clients ───────────────────────────────────────────────────────────────────
+-- created_at: when onboarded (staggered 2023–2024)
 
-insert into clients (id, name, company, email, phone, nationality, vip, risk_flag, notes) values
-  ('4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c', 'James Whitfield',   'Acme Corp',            'james@acmecorp.com',       '+1 (310) 555-0192', 'US', true,  false, 'CEO. Prefers midsize+, always requests catering. Loyal repeat client.'),
-  ('8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b', 'Priya Nair',        'Horizon Ventures',     'priya.nair@horizonvc.com', '+1 (415) 555-0348', 'US', false, false, 'VC partner. Frequently LA→NYC. Wifi critical, light traveler.'),
-  ('2d9a6f4e-3c8b-4a1d-9f5e-6b2d9a4f3c8e', 'Marcus Stein',      NULL,                   'mstein@protonmail.com',    '+49 151 5550198',   'DE', true,  false, 'European HNW. Requests G650 or equivalent for transatlantic routes.'),
-  ('6a3e1f9c-5d7b-4e4a-a2c8-9f6a3e1d5c7b', 'Sofia Castellanos', 'Meridian Media Group', 'scastellanos@meridmg.com', '+1 (212) 555-0761', 'US', false, false, 'Marketing exec. Group bookings 6–10 pax, often with tight notice.'),
-  ('9f7b5c2d-8a4e-4f3b-b9d1-5c7f2b8a4e3d', 'Derek Okonkwo',     'Okonkwo Capital',      'derek@okonkwocap.com',     '+1 (713) 555-0523', 'US', false, true,  'Payment issues on Q3 booking — require deposit before confirming.');
+insert into clients (id, created_at, name, company, email, phone, nationality, vip, risk_flag, notes) values
+  ('4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c', '2023-09-15 14:00:00+00', 'James Whitfield',   'Acme Corp',            'james@acmecorp.com',       '+1 (310) 555-0192', 'US', true,  false, 'CEO. Prefers midsize+, always requests catering. Loyal repeat client.'),
+  ('8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b', '2023-11-20 10:30:00+00', 'Priya Nair',        'Horizon Ventures',     'priya.nair@horizonvc.com', '+1 (415) 555-0348', 'US', false, false, 'VC partner. Frequently LA→NYC. Wifi critical, light traveler.'),
+  ('2d9a6f4e-3c8b-4a1d-9f5e-6b2d9a4f3c8e', '2024-01-10 09:00:00+00', 'Marcus Stein',      NULL,                   'mstein@protonmail.com',    '+49 151 5550198',   'DE', true,  false, 'European HNW. Requests G650 or equivalent for transatlantic routes.'),
+  ('6a3e1f9c-5d7b-4e4a-a2c8-9f6a3e1d5c7b', '2024-03-15 11:00:00+00', 'Sofia Castellanos', 'Meridian Media Group', 'scastellanos@meridmg.com', '+1 (212) 555-0761', 'US', false, false, 'Marketing exec. Group bookings 6–10 pax, often with tight notice.'),
+  ('9f7b5c2d-8a4e-4f3b-b9d1-5c7f2b8a4e3d', '2024-05-20 16:00:00+00', 'Derek Okonkwo',     'Okonkwo Capital',      'derek@okonkwocap.com',     '+1 (713) 555-0523', 'US', false, true,  'Payment issues on Q3 booking — require deposit before confirming.');
 
 -- ── Crew ─────────────────────────────────────────────────────────────────────
+-- created_at: when hired (staggered 2022–2024); last_duty_end uses now() for realism
 
-insert into crew (id, name, role, ratings, duty_hours_this_week) values
-  ('2f6a3d8c-7e1b-4c5f-b9a4-8d2f6a3c7e1b', 'Captain David Holt',     'captain',          ARRAY['Citation XLS+', 'Challenger 350', 'Citation Latitude'], 12.5),
-  ('6c1f8b5a-3d7e-4a2c-9f6b-1e6c1f8a5d7e', 'FO Sarah Kimura',        'first_officer',    ARRAY['Citation XLS+', 'Citation Latitude'], 8.0),
-  ('a3e7d2f9-1c5b-4d8a-b7f3-2e9a3d7f1c5b', 'Captain Luis Herrera',   'captain',          ARRAY['Citation CJ3', 'Phenom 300E'], 22.0),
-  ('e7f4a8c1-9b2d-4f6e-a3c7-8b1e7f4a2d9c', 'FO Megan Tran',          'first_officer',    ARRAY['Citation CJ3', 'Phenom 300E'], 18.5),
-  ('b4c9e1f8-5a3d-4c2b-9e7f-4a8b9c1f5d3e', 'FA Nicole Osei',         'flight_attendant', ARRAY[]::text[], 14.0),
-  ('d8a1f5c4-2e7b-4a9d-b3f8-5c1d8a4f2e7b', 'Captain Ray Morales',    'captain',          ARRAY['Hawker 800XP', 'Challenger 605'], 30.0),
-  ('f5b7a2e9-4c1d-4b6f-a8d5-2c7f5b9a4e1d', 'FO Anita Patel',         'first_officer',    ARRAY['Hawker 800XP'], 25.5),
-  ('c1d9f4a7-8b5e-4d2c-b6a1-9f4c1d7a8e5b', 'Captain Erik Johansson', 'captain',          ARRAY['Gulfstream G450', 'Gulfstream G650ER'], 6.0),
-  ('a8e2f6d1-3c9b-4e5a-9f2c-7b8a2e6d3c9f', 'FO Yuki Tanaka',         'first_officer',    ARRAY['Gulfstream G450', 'Gulfstream G650ER'], 6.0),
-  ('f2a6b9e4-7d1c-4f8a-b4e9-1c3f2a6d7b9e', 'FA Camille Dubois',      'flight_attendant', ARRAY[]::text[], 6.0);
+insert into crew (id, created_at, name, role, ratings, duty_hours_this_week, last_duty_end, available_hours_per_day) values
+  ('2f6a3d8c-7e1b-4c5f-b9a4-8d2f6a3c7e1b', '2022-03-01 08:00:00+00', 'Captain David Holt',     'captain',          ARRAY['Citation XLS+', 'Challenger 350', 'Citation Latitude'], 12.5, now() - interval '2 days', 10),
+  ('6c1f8b5a-3d7e-4a2c-9f6b-1e6c1f8a5d7e', '2022-08-15 09:00:00+00', 'FO Sarah Kimura',        'first_officer',    ARRAY['Citation XLS+', 'Citation Latitude'], 8.0, now() - interval '1 day', 10),
+  ('a3e7d2f9-1c5b-4d8a-b7f3-2e9a3d7f1c5b', '2023-02-01 10:00:00+00', 'Captain Luis Herrera',   'captain',          ARRAY['Citation CJ3', 'Phenom 300E'], 22.0, now() - interval '6 hours', 10),
+  ('e7f4a8c1-9b2d-4f6e-a3c7-8b1e7f4a2d9c', '2023-02-01 10:00:00+00', 'FO Megan Tran',          'first_officer',    ARRAY['Citation CJ3', 'Phenom 300E'], 18.5, now() - interval '8 hours', 10),
+  ('b4c9e1f8-5a3d-4c2b-9e7f-4a8b9c1f5d3e', '2023-06-15 11:00:00+00', 'FA Nicole Osei',         'flight_attendant', ARRAY[]::text[], 14.0, now() - interval '3 days', 10),
+  ('d8a1f5c4-2e7b-4a9d-b3f8-5c1d8a4f2e7b', '2021-11-10 08:00:00+00', 'Captain Ray Morales',    'captain',          ARRAY['Hawker 800XP', 'Challenger 605'], 30.0, now() - interval '12 hours', 8),
+  ('f5b7a2e9-4c1d-4b6f-a8d5-2c7f5b9a4e1d', '2022-05-20 14:00:00+00', 'FO Anita Patel',         'first_officer',    ARRAY['Hawker 800XP'], 25.5, now() - interval '4 hours', 10),
+  ('c1d9f4a7-8b5e-4d2c-b6a1-9f4c1d7a8e5b', '2020-09-01 09:00:00+00', 'Captain Erik Johansson', 'captain',          ARRAY['Gulfstream G450', 'Gulfstream G650ER'], 6.0, now() - interval '5 days', 10),
+  ('a8e2f6d1-3c9b-4e5a-9f2c-7b8a2e6d3c9f', '2023-04-10 10:00:00+00', 'FO Yuki Tanaka',         'first_officer',    ARRAY['Gulfstream G450', 'Gulfstream G650ER'], 6.0, now() - interval '5 days', 10),
+  ('f2a6b9e4-7d1c-4f8a-b4e9-1c3f2a6d7b9e', '2024-01-15 09:00:00+00', 'FA Camille Dubois',      'flight_attendant', ARRAY[]::text[], 6.0, NULL, 12);
 
 -- ── Trips ─────────────────────────────────────────────────────────────────────
 
-insert into trips (id, client_id, legs, trip_type, pax_adults, pax_children, flexibility_hours, catering_notes, luggage_notes, wifi_required, ai_extracted, created_at) values
+insert into trips (id, client_id, legs, trip_type, pax_adults, pax_children, flexibility_hours, flexibility_hours_return, catering_notes, luggage_notes, wifi_required, ai_extracted, created_at) values
 
   ('3b8f5a1d-7c4e-4f2b-9a6d-1e3f8c5a7b4d',
    '4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c',
    '[{"from_icao":"KLAX","to_icao":"KTEB","date":"2025-06-15","time":"14:00"},{"from_icao":"KTEB","to_icao":"KLAX","date":"2025-06-17","time":"19:00"}]',
-   'round_trip', 4, 0, 2, 'Light snacks and beverages', '6 checked bags', true, true,
+   'round_trip', 4, 0, 2, 4, 'Light snacks and beverages', '6 checked bags', true, true,
    now() - interval '12 days'),
 
   ('7e4c2f9a-1d8b-4a5e-b3f7-4c2e7f9a1d8c',
    '8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b',
    '[{"from_icao":"KSFO","to_icao":"KTEB","date":"2025-07-02","time":"08:00"}]',
-   'one_way', 2, 0, 0, NULL, NULL, true, true,
+   'one_way', 2, 0, 0, 0, NULL, NULL, true, true,
    now() - interval '9 days'),
 
   ('1a9d6f3c-5b2e-4c8a-a7d4-9f1a3c6b5e2d',
    '2d9a6f4e-3c8b-4a1d-9f5e-6b2d9a4f3c8e',
    '[{"from_icao":"KTEB","to_icao":"EGLL","date":"2025-07-10","time":"21:00"},{"from_icao":"EGLL","to_icao":"LFPB","date":"2025-07-14","time":"10:00"},{"from_icao":"LFPB","to_icao":"KTEB","date":"2025-07-18","time":"14:00"}]',
-   'multi_leg', 3, 0, 0, 'Full catering each leg', 'Light luggage only', true, true,
+   'multi_leg', 3, 0, 0, 0, 'Full catering each leg', 'Light luggage only', true, true,
    now() - interval '7 days'),
 
   ('5f2a8d7b-9e1c-4d6f-b4a9-7d5f2e8a1c9b',
    '6a3e1f9c-5d7b-4e4a-a2c8-9f6a3e1d5c7b',
    '[{"from_icao":"KLAX","to_icao":"KLAS","date":"2025-08-01","time":"11:00"}]',
-   'one_way', 9, 0, 3, NULL, NULL, false, false,
+   'one_way', 9, 0, 3, 0, NULL, NULL, false, false,
    now() - interval '5 days'),
 
   ('9c7f4b1e-3a6d-4b9c-a1f8-3e9c7f4b6a1d',
    '9f7b5c2d-8a4e-4f3b-b9d1-5c7f2b8a4e3d',
    '[{"from_icao":"KHOU","to_icao":"KMIA","date":"2025-08-15","time":"09:30"}]',
-   'one_way', 5, 0, 1, NULL, NULL, true, false,
+   'one_way', 5, 0, 1, 0, NULL, NULL, true, false,
    now() - interval '3 days'),
 
   ('4b1e9f6c-8a5d-4c2b-9e7f-6c4b1a9f8d5e',
    '4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c',
    '[{"from_icao":"KTEB","to_icao":"KORD","date":"2025-05-20","time":"07:00"},{"from_icao":"KORD","to_icao":"KTEB","date":"2025-05-20","time":"18:30"}]',
-   'round_trip', 4, 0, 0, 'Continental breakfast outbound', NULL, true, false,
+   'round_trip', 4, 0, 0, 0, 'Continental breakfast outbound', NULL, true, false,
    now() - interval '30 days'),
 
   ('8d5c3a7f-2b9e-4f1d-a6b3-9e8d5c3f7a2b',
    '8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b',
    '[{"from_icao":"KSFO","to_icao":"KLAX","date":"2025-04-10","time":"16:00"}]',
-   'one_way', 1, 0, 0, NULL, NULL, true, false,
+   'one_way', 1, 0, 0, 0, NULL, NULL, true, false,
    now() - interval '60 days');
+
+-- Trip with full operational fields (raw_input, pax_pets, special_needs, preferred_category, min_cabin_height_in, bathroom_required, ai_confidence, request_source, requested_*_window_*, estimated_*_hours)
+insert into trips (id, client_id, raw_input, legs, trip_type, pax_adults, pax_children, pax_pets, flexibility_hours, flexibility_hours_return, special_needs, catering_notes, luggage_notes, preferred_category, min_cabin_height_in, wifi_required, bathroom_required, ai_extracted, ai_confidence, request_source, requested_departure_window_start, requested_departure_window_end, requested_return_window_start, requested_return_window_end, estimated_block_hours, estimated_reposition_hours, estimated_total_hours, created_at) values
+  ('a1b2c3d4-5e6f-4a7b-8c9d-0e1f2a3b4c5d',
+   '4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c',
+   'James needs LAX–TEB round trip Jun 15–17, 4 pax, light snacks, 6 bags',
+   '[{"from_icao":"KLAX","to_icao":"KTEB","date":"2025-06-20","time":"14:00"},{"from_icao":"KTEB","to_icao":"KLAX","date":"2025-06-22","time":"19:00"}]'::jsonb,
+   'round_trip', 4, 0, 1, 2, 4, 'Wheelchair-accessible FBO', 'Light snacks', '6 checked + 1 pet carrier', 'midsize', 68.0, true, true, true,
+   '{"legs":0.95,"pax":0.9,"dates":0.88}'::jsonb,
+   'email',
+   '2025-06-20 12:00:00+00'::timestamptz, '2025-06-20 18:00:00+00'::timestamptz,
+   '2025-06-22 16:00:00+00'::timestamptz, '2025-06-22 22:00:00+00'::timestamptz,
+   10.8, 1.2, 12.0,
+   now() - interval '10 days');
 
 -- ── Quotes ────────────────────────────────────────────────────────────────────
 
-insert into quotes (id, trip_id, client_id, aircraft_id, status, version, margin_pct, currency, notes, sent_at, confirmed_at, created_at) values
+insert into quotes (id, trip_id, client_id, aircraft_id, status, version, margin_pct, currency, broker_name, broker_commission_pct, notes, quote_valid_until, estimated_total_hours, won_lost_reason, sent_at, confirmed_at, created_at) values
 
   -- new: just created, not yet priced
   ('7a4e2c9f-1d8b-4b5a-9e7c-4f2a7e1c8d9b',
    '9c7f4b1e-3a6d-4b9c-a1f8-3e9c7f4b6a1d',
    '9f7b5c2d-8a4e-4f3b-b9d1-5c7f2b8a4e3d',
    '5a2d7f1c-9e4b-4a6d-8c1f-3b7a5d2f9c4e',
-   'new', 1, 20.0, 'USD', NULL, NULL, NULL,
+   'new', 1, 20.0, 'USD', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
    now() - interval '3 days'),
 
   -- pricing: cost breakdown being worked
@@ -402,15 +420,15 @@ insert into quotes (id, trip_id, client_id, aircraft_id, status, version, margin
    '5f2a8d7b-9e1c-4d6f-b4a9-7d5f2e8a1c9b',
    '6a3e1f9c-5d7b-4e4a-a2c8-9f6a3e1d5c7b',
    '6e3b9d5f-1c4a-4b7d-8e2f-3a9c6b1d4e7f',
-   'pricing', 1, 18.0, 'USD', 'Short hop, Challenger overkill — CJ3 better fit', NULL, NULL,
+   'pricing', 1, 18.0, 'USD', NULL, NULL, 'Short hop, Challenger overkill — CJ3 better fit', NULL, 2.5, NULL, NULL, NULL,
    now() - interval '4 days'),
 
-  -- sent: quote emailed to client
+  -- sent: quote emailed to client (with broker, quote_valid_until)
   ('5d3b1f8c-9e4a-4d7b-a2f5-8c5d3b1f9e4a',
    '7e4c2f9a-1d8b-4a5e-b3f7-4c2e7f9a1d8c',
    '8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b',
    '8b5e2f9c-3d7a-4e1b-b6c4-2f8a5d3e7c1b',
-   'sent', 1, 22.0, 'USD', 'Priya prefers XLS+ for this route', now() - interval '5 days', NULL,
+   'sent', 1, 22.0, 'USD', 'JetSet Brokers', 5.0, 'Priya prefers XLS+ for this route', now() + interval '7 days', 5.1, NULL, now() - interval '5 days', NULL,
    now() - interval '8 days'),
 
   -- negotiating: client pushing back on price
@@ -418,23 +436,23 @@ insert into quotes (id, trip_id, client_id, aircraft_id, status, version, margin
    '3b8f5a1d-7c4e-4f2b-9a6d-1e3f8c5a7b4d',
    '4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c',
    '9c6f3a4d-2e8b-4d1c-b7f5-4a9c2e6f8d1b',
-   'negotiating', 2, 19.0, 'USD', 'James requested v2 at lower margin. Hold at 19%.', now() - interval '8 days', NULL,
+   'negotiating', 2, 19.0, 'USD', NULL, NULL, 'James requested v2 at lower margin. Hold at 19%.', now() + interval '3 days', 10.8, NULL, now() - interval '8 days', NULL,
    now() - interval '11 days'),
 
-  -- confirmed: booked and deposit received
+  -- confirmed: booked and deposit received (broker)
   ('3f1a9e6d-7c4b-4f2a-9d3e-6b3f1a9e7c4b',
    '1a9d6f3c-5b2e-4c8a-a7d4-9f1a3c6b5e2d',
    '2d9a6f4e-3c8b-4a1d-9f5e-6b2d9a4f3c8e',
    '1b6d4e8f-5c3a-4b7d-8e2f-9c1b6d4e5f3a',
-   'confirmed', 1, 25.0, 'USD', 'Marcus confirmed. Full deposit received.', now() - interval '4 days', now() - interval '2 days',
+   'confirmed', 1, 25.0, 'USD', 'European Charter Partners', 8.0, 'Marcus confirmed. Full deposit received.', NULL, 16.2, NULL, now() - interval '4 days', now() - interval '2 days',
    now() - interval '6 days'),
 
-  -- lost: client went with another broker
+  -- lost: client went with another broker (won_lost_reason)
   ('7b5f3c1a-2e9d-4c6b-a7f3-1a7b5c3f2e9d',
    '8d5c3a7f-2b9e-4f1d-a6b3-9e8d5c3f7a2b',
    '8c1f5d3a-7e4b-4d2f-b8a1-3c8f5d1a7e4b',
    '4c1d8f6a-7e2b-4d9c-a5f3-8b4e1c7d2f9a',
-   'lost', 1, 20.0, 'USD', 'Lost to competitor — Priya said pricing was $400 higher', now() - interval '55 days', NULL,
+   'lost', 1, 20.0, 'USD', NULL, NULL, 'Lost to competitor — Priya said pricing was $400 higher', NULL, 1.1, 'competitor', now() - interval '55 days', NULL,
    now() - interval '58 days'),
 
   -- completed: flight done, invoiced
@@ -442,7 +460,7 @@ insert into quotes (id, trip_id, client_id, aircraft_id, status, version, margin
    '4b1e9f6c-8a5d-4c2b-9e7f-6c4b1a9f8d5e',
    '4e8f2a7c-1b5d-4c9e-a3f6-7d4e2a8f1b5c',
    '8b5e2f9c-3d7a-4e1b-b6c4-2f8a5d3e7c1b',
-   'completed', 1, 22.0, 'USD', 'Completed. James very happy — sent referral.', now() - interval '25 days', now() - interval '28 days',
+   'completed', 1, 22.0, 'USD', NULL, NULL, 'Completed. James very happy — sent referral.', NULL, 4.2, NULL, now() - interval '25 days', now() - interval '28 days',
    now() - interval '29 days');
 
 -- ── Quote costs ───────────────────────────────────────────────────────────────
@@ -584,3 +602,8 @@ insert into airports (icao, name, city, country_code, lat, lon, elevation_ft, lo
   ('MDPP', 'Gregorio Luperón International Airport', 'Puerto Plata', 'DO', 19.758, -70.5701, 15, 9843, true, 600, true),
   ('TJSJ', 'Luis Muñoz Marín International Airport', 'San Juan', 'PR', 18.4394, -66.0018, 9, 10002, true, 700, true)
 on conflict (icao) do nothing;
+
+-- Update key airports with optional fields (iata, fuel_price_usd_gal, fuel_price_updated_at, operating_hours_utc, curfew_utc, deicing_available, slot_required, notes)
+update airports set iata = 'TEB', fuel_price_usd_gal = 7.85, fuel_price_updated_at = now() - interval '2 days', operating_hours_utc = '{"from":"06:00","to":"23:00"}'::jsonb, curfew_utc = '{"from":"23:00","to":"06:00"}'::jsonb, deicing_available = true, slot_required = true, notes = 'Primary NYC-area bizjet airport' where icao = 'KTEB';
+update airports set iata = 'LAX', fuel_price_usd_gal = 8.12, fuel_price_updated_at = now() - interval '1 day', slot_required = true, notes = 'Major hub, slot coordination required' where icao = 'KLAX';
+update airports set iata = 'LHR', fuel_price_usd_gal = 9.20, fuel_price_updated_at = now() - interval '3 days', slot_required = true, deicing_available = true, notes = 'Primary London gateway' where icao = 'EGLL';

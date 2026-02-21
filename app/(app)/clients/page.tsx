@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
+import { formatDate } from "@/lib/format";
 
 export default async function ClientsPage() {
   const supabase = await createClient();
@@ -94,7 +95,7 @@ export default async function ClientsPage() {
                     </div>
                   </td>
                   <td className="px-5 py-3 text-xs text-zinc-600">
-                    {new Date(c.created_at).toLocaleDateString()}
+                    {formatDate(c.created_at)}
                   </td>
                 </tr>
               ))}

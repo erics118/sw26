@@ -122,6 +122,7 @@ export interface Database {
           pax_children: number;
           pax_pets: number;
           flexibility_hours: number;
+          flexibility_hours_return: number;
           special_needs: string | null;
           catering_notes: string | null;
           luggage_notes: string | null;
@@ -151,6 +152,7 @@ export interface Database {
           pax_children?: number;
           pax_pets?: number;
           flexibility_hours?: number;
+          flexibility_hours_return?: number;
           special_needs?: string | null;
           catering_notes?: string | null;
           luggage_notes?: string | null;

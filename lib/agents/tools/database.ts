@@ -4,6 +4,11 @@ import { calculatePricing } from "@/lib/pricing/engine";
 import { computeRoutePlan, RoutingError } from "@/lib/routing";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Json, TripLeg } from "@/lib/database.types";
+import {
+  TripLegSchema,
+  TripTypeSchema,
+  OptimizationModeSchema,
+} from "@/lib/schemas";
 
 type ToolContent = { content: [{ type: "text"; text: string }] };
 
@@ -53,21 +58,13 @@ export function createDatabaseTools(supabase: SupabaseClient) {
       {
         raw_input: z.string().describe("Original raw text"),
         client_id: z.string().nullable().optional(),
-        legs: z
-          .array(
-            z.object({
-              from_icao: z.string(),
-              to_icao: z.string(),
-              date: z.string().describe("ISO YYYY-MM-DD"),
-              time: z.string().describe("HH:MM 24h"),
-            }),
-          )
-          .min(1),
-        trip_type: z.enum(["one_way", "round_trip", "multi_leg"]),
+        legs: z.array(TripLegSchema).min(1),
+        trip_type: TripTypeSchema,
         pax_adults: z.number().int().min(1),
         pax_children: z.number().int().min(0).default(0),
         pax_pets: z.number().int().min(0).default(0),
         flexibility_hours: z.number().int().min(0).default(0),
+        flexibility_hours_return: z.number().int().min(0).default(0),
         special_needs: z.string().nullable().optional(),
         catering_notes: z.string().nullable().optional(),
         luggage_notes: z.string().nullable().optional(),
@@ -216,22 +213,10 @@ export function createDatabaseTools(supabase: SupabaseClient) {
       "Compute a full route plan for an aircraft and trip legs. Returns optimized route (including fuel stops), weather summaries, NOTAM alerts, risk score, on-time probability, and cost breakdown. Use cost_breakdown.avg_fuel_price_usd_gal as fuel_price_override_usd when calling calculate_pricing.",
       {
         aircraft_id: z.string().uuid(),
-        legs: z
-          .array(
-            z.object({
-              from_icao: z.string(),
-              to_icao: z.string(),
-              date: z.string().describe("ISO YYYY-MM-DD"),
-              time: z.string().describe("HH:MM 24h"),
-            }),
-          )
-          .min(1),
-        optimization_mode: z
-          .enum(["cost", "time", "balanced"])
-          .default("balanced")
-          .describe(
-            "cost = minimize fuel cost; time = minimize flight time; balanced = trade-off",
-          ),
+        legs: z.array(TripLegSchema).min(1),
+        optimization_mode: OptimizationModeSchema.default("balanced").describe(
+          "Route optimization preference: cost = minimize fuel cost; time = minimize flight time; balanced = trade-off",
+        ),
       },
       async ({ aircraft_id, legs, optimization_mode }) => {
         try {
@@ -257,7 +242,7 @@ export function createDatabaseTools(supabase: SupabaseClient) {
         quote_id: z.string().uuid(),
         trip_id: z.string().uuid().nullable().optional(),
         aircraft_id: z.string().uuid(),
-        optimization_mode: z.enum(["cost", "time", "balanced"]),
+        optimization_mode: OptimizationModeSchema,
         route_legs: z.array(z.any()),
         refuel_stops: z.array(z.any()),
         weather_summary: z.array(z.any()),
@@ -329,16 +314,7 @@ export function createDatabaseTools(supabase: SupabaseClient) {
       "calculate_pricing",
       "Calculate full pricing for a trip with a specific aircraft. Returns detailed cost breakdown including line_items.",
       {
-        legs: z
-          .array(
-            z.object({
-              from_icao: z.string(),
-              to_icao: z.string(),
-              date: z.string(),
-              time: z.string(),
-            }),
-          )
-          .min(1),
+        legs: z.array(TripLegSchema).min(1),
         aircraft_category: z
           .string()
           .describe("turboprop, light, midsize, super-mid, heavy, ultra-long"),

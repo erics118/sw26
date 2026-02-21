@@ -19,7 +19,8 @@ export interface ExtractedTrip {
   pax_adults: number;
   pax_children: number;
   pax_pets: number;
-  flexibility_hours: number;
+  flexibility_hours: number; // departure/outbound ±hours
+  flexibility_hours_return: number; // return leg ±hours (round_trip)
   special_needs: string | null;
   catering_notes: string | null;
   luggage_notes: string | null;
@@ -41,6 +42,8 @@ RULES:
 - Dates: YYYY-MM-DD. Times: HH:MM 24h.
 - trip_type: "round_trip" if return mentioned, "multi_leg" if 3+ airports, else "one_way".
 - pax_adults min 1. confidence: per-field 0-1 (1=explicit, 0.5-0.8=inferred).
+- flexibility_hours: departure/outbound ±hours (e.g. "flexible by 2 hours" → 2).
+- flexibility_hours_return: return leg ±hours if different (e.g. "return flexible by 4 hours" → 4). Use 0 if not mentioned or one_way.
 
 Output JSON:
 {
@@ -50,6 +53,7 @@ Output JSON:
   "pax_children": 0,
   "pax_pets": 0,
   "flexibility_hours": 0,
+  "flexibility_hours_return": 0,
   "special_needs": null,
   "catering_notes": null,
   "luggage_notes": null,
@@ -73,7 +77,11 @@ function parseJsonFromResponse(raw: string): ExtractedTrip {
   const end = Math.max(cleaned.lastIndexOf("}"), cleaned.lastIndexOf("]"));
   const jsonText =
     start !== -1 && end > start ? cleaned.slice(start, end + 1) : cleaned;
-  return JSON.parse(jsonText) as ExtractedTrip;
+  const parsed = JSON.parse(jsonText) as ExtractedTrip;
+  if (parsed.flexibility_hours_return == null) {
+    parsed.flexibility_hours_return = 0;
+  }
+  return parsed;
 }
 
 export async function extractTripFromText(

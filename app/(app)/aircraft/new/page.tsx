@@ -39,6 +39,26 @@ export default function NewAircraftPage() {
       has_bathroom: formData.get("has_bathroom") === "on",
       home_base_icao: formData.get("home_base_icao") || null,
       notes: formData.get("notes") || null,
+      status: (formData.get("status") as string) || "active",
+      daily_available_hours: formData.get("daily_available_hours")
+        ? parseFloat(formData.get("daily_available_hours") as string)
+        : 8,
+      cruise_speed_kts: formData.get("cruise_speed_kts")
+        ? parseInt(formData.get("cruise_speed_kts") as string)
+        : null,
+      max_fuel_capacity_gal: formData.get("max_fuel_capacity_gal")
+        ? parseFloat(formData.get("max_fuel_capacity_gal") as string)
+        : null,
+      min_runway_ft: formData.get("min_runway_ft")
+        ? parseInt(formData.get("min_runway_ft") as string)
+        : null,
+      etops_certified: formData.get("etops_certified") === "on",
+      max_payload_lbs: formData.get("max_payload_lbs")
+        ? parseFloat(formData.get("max_payload_lbs") as string)
+        : null,
+      reserve_fuel_gal: formData.get("reserve_fuel_gal")
+        ? parseFloat(formData.get("reserve_fuel_gal") as string)
+        : null,
     };
 
     try {
@@ -53,7 +73,8 @@ export default function NewAircraftPage() {
         throw new Error(err.error || "Failed to create aircraft");
       }
 
-      router.push("/aircraft");
+      const aircraft = await res.json();
+      router.push(`/aircraft/${aircraft.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
       setIsLoading(false);
@@ -196,6 +217,120 @@ export default function NewAircraftPage() {
               className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
               placeholder="200.0"
             />
+          </div>
+
+          {/* Performance (optional) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label
+                htmlFor="cruise_speed_kts"
+                className="block text-sm font-medium text-zinc-300"
+              >
+                Cruise Speed (kts)
+              </label>
+              <input
+                id="cruise_speed_kts"
+                name="cruise_speed_kts"
+                type="number"
+                className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                placeholder="450"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="min_runway_ft"
+                className="block text-sm font-medium text-zinc-300"
+              >
+                Min Runway (ft)
+              </label>
+              <input
+                id="min_runway_ft"
+                name="min_runway_ft"
+                type="number"
+                className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                placeholder="5000"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="max_fuel_capacity_gal"
+                className="block text-sm font-medium text-zinc-300"
+              >
+                Max Fuel Capacity (gal)
+              </label>
+              <input
+                id="max_fuel_capacity_gal"
+                name="max_fuel_capacity_gal"
+                type="number"
+                step="0.1"
+                className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                placeholder="4500"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="reserve_fuel_gal"
+                className="block text-sm font-medium text-zinc-300"
+              >
+                Reserve Fuel (gal)
+              </label>
+              <input
+                id="reserve_fuel_gal"
+                name="reserve_fuel_gal"
+                type="number"
+                step="0.1"
+                className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                placeholder="150"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="max_payload_lbs"
+                className="block text-sm font-medium text-zinc-300"
+              >
+                Max Payload (lbs)
+              </label>
+              <input
+                id="max_payload_lbs"
+                name="max_payload_lbs"
+                type="number"
+                step="0.1"
+                className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                placeholder="5000"
+              />
+            </div>
+            <div>
+              <label
+                htmlFor="daily_available_hours"
+                className="block text-sm font-medium text-zinc-300"
+              >
+                Daily Available Hours
+              </label>
+              <input
+                id="daily_available_hours"
+                name="daily_available_hours"
+                type="number"
+                step="0.1"
+                defaultValue="8"
+                className="mt-1 block w-full rounded-md border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+                placeholder="8"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              id="etops_certified"
+              name="etops_certified"
+              type="checkbox"
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-amber-400 focus:ring-amber-400"
+            />
+            <label
+              htmlFor="etops_certified"
+              className="text-sm font-medium text-zinc-300"
+            >
+              ETOPS certified
+            </label>
           </div>
 
           {/* Home Base */}
