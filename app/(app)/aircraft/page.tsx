@@ -9,7 +9,7 @@ export default async function AircraftPage() {
   const { data: rawAircraft } = await supabase
     .from("aircraft")
     .select(
-      "id, tail_number, category, range_nm, pax_capacity, cabin_height_in, has_wifi, has_bathroom, home_base_icao, status, daily_available_hours, fuel_burn_gph, cruise_speed_kts, max_fuel_capacity_gal, min_runway_ft, etops_certified, max_payload_lbs, reserve_fuel_gal, notes, operators(name)",
+      "id, tail_number, category, range_nm, pax_capacity, cabin_height_in, has_wifi, has_bathroom, home_base_icao, status, daily_available_hours, fuel_burn_gph, cruise_speed_kts, max_fuel_capacity_gal, min_runway_ft, etops_certified, max_payload_lbs, reserve_fuel_gal, notes",
     )
     .order("tail_number");
 

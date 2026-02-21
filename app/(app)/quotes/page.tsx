@@ -32,12 +32,11 @@ export default async function QuotesPage({ searchParams }: PageProps) {
        scheduled_total_hours, actual_departure_time, actual_arrival_time,
        actual_block_hours, actual_reposition_hours, actual_total_hours,
        delay_reason_code,
-       clients(name), aircraft(tail_number, category), operators(name),
+       clients(name), aircraft(tail_number, category),
        trips(legs),
        quote_costs(subtotal, margin_amount, tax, total, fuel_cost, fbo_fees,
          repositioning_cost, repositioning_hours, permit_fees,
-         crew_overnight_cost, catering_cost, peak_day_surcharge,
-         operator_quoted_rate)`,
+         crew_overnight_cost, catering_cost, peak_day_surcharge)`,
     )
     .order("created_at", { ascending: false });
 

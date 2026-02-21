@@ -37,38 +37,11 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["clients"]["Insert"]>;
         Relationships: [];
       };
-      operators: {
-        Row: {
-          id: string;
-          created_at: string;
-          name: string;
-          cert_number: string | null;
-          cert_expiry: string | null;
-          insurance_expiry: string | null;
-          reliability_score: number;
-          blacklisted: boolean;
-          notes: string | null;
-        };
-        Insert: {
-          id?: string;
-          created_at?: string;
-          name: string;
-          cert_number?: string | null;
-          cert_expiry?: string | null;
-          insurance_expiry?: string | null;
-          reliability_score?: number;
-          blacklisted?: boolean;
-          notes?: string | null;
-        };
-        Update: Partial<Database["public"]["Tables"]["operators"]["Insert"]>;
-        Relationships: [];
-      };
       aircraft: {
         Row: {
           id: string;
           created_at: string;
           tail_number: string;
-          operator_id: string | null;
           category: string;
           range_nm: number;
           cabin_height_in: number | null;
@@ -92,7 +65,6 @@ export interface Database {
           id?: string;
           created_at?: string;
           tail_number: string;
-          operator_id?: string | null;
           category: string;
           range_nm: number;
           cabin_height_in?: number | null;
@@ -118,7 +90,6 @@ export interface Database {
         Row: {
           id: string;
           created_at: string;
-          operator_id: string | null;
           name: string;
           role: string;
           ratings: string[] | null;
@@ -129,7 +100,6 @@ export interface Database {
         Insert: {
           id?: string;
           created_at?: string;
-          operator_id?: string | null;
           name: string;
           role: string;
           ratings?: string[] | null;
@@ -210,7 +180,6 @@ export interface Database {
           trip_id: string;
           client_id: string | null;
           aircraft_id: string | null;
-          operator_id: string | null;
           status: string;
           version: number;
           margin_pct: number;
@@ -244,7 +213,6 @@ export interface Database {
           trip_id: string;
           client_id?: string | null;
           aircraft_id?: string | null;
-          operator_id?: string | null;
           status?: string;
           version?: number;
           margin_pct?: number;
@@ -288,7 +256,6 @@ export interface Database {
           tax: number;
           total: number;
           per_leg_breakdown: Json;
-          operator_quoted_rate: number | null;
         };
         Insert: {
           id?: string;
@@ -306,7 +273,6 @@ export interface Database {
           tax?: number;
           total?: number;
           per_leg_breakdown?: Json;
-          operator_quoted_rate?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["quote_costs"]["Insert"]>;
         Relationships: [];
@@ -494,7 +460,6 @@ export interface Database {
 
 // Convenience row types
 export type Client = Database["public"]["Tables"]["clients"]["Row"];
-export type Operator = Database["public"]["Tables"]["operators"]["Row"];
 export type Aircraft = Database["public"]["Tables"]["aircraft"]["Row"];
 export type Crew = Database["public"]["Tables"]["crew"]["Row"];
 export type Trip = Database["public"]["Tables"]["trips"]["Row"];

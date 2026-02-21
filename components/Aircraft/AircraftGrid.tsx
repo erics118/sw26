@@ -24,7 +24,6 @@ export type AircraftRow = {
   max_payload_lbs: number | null;
   reserve_fuel_gal: number | null;
   notes: string | null;
-  operators: { name: string } | null;
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -177,16 +176,6 @@ function AircraftDetailModal({
           </div>
         </div>
 
-        {/* Operator */}
-        {aircraft.operators && (
-          <div>
-            <p className="mb-1 text-[10px] font-semibold tracking-widest text-zinc-600 uppercase">
-              Operator
-            </p>
-            <p className="text-sm text-zinc-300">{aircraft.operators.name}</p>
-          </div>
-        )}
-
         {/* Notes */}
         {aircraft.notes && (
           <div>
@@ -212,7 +201,6 @@ export function AircraftGrid({ aircraft }: { aircraft: AircraftRow[] }) {
     <>
       <div className="grid grid-cols-3 gap-4">
         {aircraft.map((a) => {
-          const op = a.operators;
           return (
             <Card key={a.id}>
               <div className="flex items-start justify-between">
@@ -250,12 +238,6 @@ export function AircraftGrid({ aircraft }: { aircraft: AircraftRow[] }) {
                     <p className="tabnum font-medium text-zinc-300">
                       {a.cabin_height_in}&quot;
                     </p>
-                  </div>
-                )}
-                {op && (
-                  <div className="col-span-2">
-                    <span className="text-zinc-600">Operator</span>
-                    <p className="font-medium text-zinc-300">{op.name}</p>
                   </div>
                 )}
               </div>

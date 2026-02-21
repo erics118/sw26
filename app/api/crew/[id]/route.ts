@@ -14,7 +14,7 @@ export async function GET(
 
   const { data, error } = await supabase
     .from("crew")
-    .select("*, operators(id, name)")
+    .select("*")
     .eq("id", id)
     .single();
 
@@ -24,9 +24,7 @@ export async function GET(
       { status: 404 },
     );
   }
-  return NextResponse.json(
-    data as Crew & { operators: { id: string; name: string } | null },
-  );
+  return NextResponse.json(data as Crew);
 }
 
 export async function PATCH(

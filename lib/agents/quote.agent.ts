@@ -13,11 +13,11 @@ export interface QuoteAgentResult {
 export interface QuoteAgentInput {
   trip_id: string;
   aircraft_id?: string | null;
-  operator_id?: string | null;
   client_id?: string | null;
   margin_pct?: number;
   currency?: string;
   notes?: string | null;
+  fuel_price_override_usd?: number;
 }
 
 export async function runQuoteAgent(
@@ -29,21 +29,21 @@ export async function runQuoteAgent(
   const {
     trip_id,
     aircraft_id,
-    operator_id,
     client_id,
     margin_pct = 15,
     currency = "USD",
     notes,
+    fuel_price_override_usd,
   } = input;
 
   const prompt = `You are an aviation charter pricing specialist. Build the best possible quote for this trip.
 
 TRIP ID: ${trip_id}
 ${aircraft_id ? `AIRCRAFT: Use aircraft ID ${aircraft_id} (pre-selected)` : "AIRCRAFT: Find the most suitable available aircraft"}
-${operator_id ? `OPERATOR: Use operator ID ${operator_id} (pre-selected)` : "OPERATOR: Find the most suitable operator"}
 MARGIN: ${margin_pct}%
 CURRENCY: ${currency}
 ${notes ? `NOTES: ${notes}` : ""}
+${fuel_price_override_usd != null ? `FUEL PRICE OVERRIDE: Use fuel_price_override_usd: ${fuel_price_override_usd} (USD per gallon) in your calculate_pricing call.` : ""}
 
 STEPS:
 1. Call get_trip to load the trip details (legs, pax count, wifi/bathroom requirements, preferred category, min cabin height).
@@ -55,8 +55,8 @@ STEPS:
    - Set is_international = true if any leg has a non-US ICAO (not starting with 'K').
    - Set catering_requested = true if trip.catering_notes is non-null or notes mention catering.
    - Use the aircraft's fuel_burn_gph and home_base_icao if available.
-4. ${operator_id ? "Use the pre-selected operator." : "Call list_operators(active_only=true) and choose the operator with the highest reliability_score that is not blacklisted."}
-5. Call save_quote with all pricing data from step 3 plus:
+   ${fuel_price_override_usd != null ? `- Pass fuel_price_override_usd: ${fuel_price_override_usd} to use the provided fuel price (USD/gal).` : ""}
+4. Call save_quote with all pricing data from step 3 plus:
    - trip_id: ${trip_id}
    ${client_id ? `- client_id: ${client_id}` : "- client_id: the client_id from the trip (if set)"}
    - margin_pct: ${margin_pct}

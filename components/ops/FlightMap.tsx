@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   MapContainer,
   TileLayer,
@@ -30,7 +30,7 @@ function createAircraftIcon(heading: number, selected: boolean) {
   });
 }
 
-// Aircraft markers component
+// Aircraft markers component: incremental add/update/remove (no full teardown on dep change)
 function AircraftMarkers({
   flights,
   selectedId,
@@ -46,6 +46,17 @@ function AircraftMarkers({
   const markersRef = useMemo(() => new Map<string, L.Marker>(), []);
 
   useEffect(() => {
+    const flightIds = new Set(flights.map((f) => f.id));
+
+    // Remove markers for flights no longer in the list
+    markersRef.forEach((marker, id) => {
+      if (!flightIds.has(id)) {
+        marker.remove();
+        markersRef.delete(id);
+      }
+    });
+
+    // Add or update markers for current flights
     flights.forEach((flight) => {
       const icon = createAircraftIcon(flight.heading, flight.id === selectedId);
       const existing = markersRef.get(flight.id);
@@ -53,6 +64,7 @@ function AircraftMarkers({
       if (existing) {
         existing.setLatLng([flight.lat, flight.lon]);
         existing.setIcon(icon);
+        existing.setZIndexOffset(flight.id === selectedId ? 1000 : 0);
       } else {
         const marker = L.marker([flight.lat, flight.lon], {
           icon,
@@ -75,7 +87,7 @@ function AircraftMarkers({
   return null;
 }
 
-// Map center controller - signals when fly animation is done
+// Map center controller - flies to selected flight and signals when animation is done
 function MapController({
   flight,
   selectedId,
@@ -86,23 +98,31 @@ function MapController({
   onFlyComplete: () => void;
 }) {
   const map = useMap();
+  const runIdRef = useRef(0);
+
   useEffect(() => {
-    if (flight && selectedId) {
-      // Small delay to ensure state is clean before starting animation
-      const startTimeout = setTimeout(() => {
-        map.flyTo([flight.lat, flight.lon], 7, { duration: 1.2 });
-        // Use once to catch the end of the fly animation
-        const handler = () => {
-          // Additional small delay so the zoom fully settles
-          setTimeout(() => onFlyComplete(), 150);
-        };
-        map.once("moveend", handler);
-      }, 50);
-      return () => {
-        clearTimeout(startTimeout);
-        map.off("moveend");
+    if (!flight || !selectedId) return;
+
+    const runId = ++runIdRef.current;
+    let settleTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const startTimeoutId = setTimeout(() => {
+      if (runId !== runIdRef.current) return;
+      map.flyTo([flight.lat, flight.lon], 7, { duration: 1.2 });
+      const handler = () => {
+        if (runId !== runIdRef.current) return;
+        settleTimeoutId = setTimeout(() => {
+          if (runId === runIdRef.current) onFlyComplete();
+        }, 150);
       };
-    }
+      map.once("moveend", handler);
+    }, 50);
+
+    return () => {
+      clearTimeout(startTimeoutId);
+      if (settleTimeoutId != null) clearTimeout(settleTimeoutId);
+      map.off("moveend");
+    };
   }, [flight, selectedId, map, onFlyComplete]);
   return null;
 }
@@ -124,6 +144,8 @@ interface FlightMapProps {
   flights: Flight[];
   selectedId: string | null;
   onSelectFlight: (id: string) => void;
+  /** Optional timestamp or label for "Last updated"; when omitted, shows placeholder */
+  lastUpdated?: string;
 }
 
 // Detect when map tiles have loaded
@@ -131,20 +153,19 @@ function TileLoadDetector({ onReady }: { onReady: () => void }) {
   const map = useMap();
   useEffect(() => {
     let fired = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
     const fire = () => {
-      if (!fired) {
-        fired = true;
-        onReady();
-      }
+      if (fired) return;
+      fired = true;
+      if (timeoutId != null) clearTimeout(timeoutId);
+      onReady();
     };
 
-    // Fire on whenReady (map container ready)
     map.whenReady(fire);
-    // Fallback: fire after 2s no matter what
-    const timeout = setTimeout(fire, 2000);
+    timeoutId = setTimeout(fire, 2000);
 
     return () => {
-      clearTimeout(timeout);
+      if (timeoutId != null) clearTimeout(timeoutId);
     };
   }, [map, onReady]);
   return null;
@@ -154,6 +175,7 @@ export default function FlightMap({
   flights,
   selectedId,
   onSelectFlight,
+  lastUpdated,
 }: FlightMapProps) {
   const [hoveredFlight, setHoveredFlight] = useState<Flight | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -161,6 +183,14 @@ export default function FlightMap({
     null,
   );
   const routeVisible = routeVisibleForId === selectedId;
+
+  // Clear route visibility when selection is cleared so we don't show stale route
+  useEffect(() => {
+    if (selectedId === null) {
+      queueMicrotask(() => setRouteVisibleForId(null));
+    }
+  }, [selectedId]);
+
   const airborneFlights = useMemo(
     () => flights.filter((f) => f.inAir),
     [flights],
@@ -248,18 +278,33 @@ export default function FlightMap({
           selectedFlight.originCoords &&
           selectedFlight.destCoords && (
             <>
-              {/* Solid line: origin -> plane (traveled) */}
-              <Polyline
-                positions={[
-                  selectedFlight.originCoords,
-                  [selectedFlight.lat, selectedFlight.lon],
-                ]}
-                pathOptions={{
-                  color: NEON_GREEN,
-                  weight: 2,
-                  opacity: 0.6,
-                }}
-              />
+              {/* Path already traveled: origin → trail points → current position (continuous line) */}
+              {selectedFlight.trail?.length > 1 ? (
+                <Polyline
+                  positions={[
+                    selectedFlight.originCoords,
+                    ...selectedFlight.trail,
+                    [selectedFlight.lat, selectedFlight.lon],
+                  ]}
+                  pathOptions={{
+                    color: NEON_GREEN,
+                    weight: 2,
+                    opacity: 0.6,
+                  }}
+                />
+              ) : (
+                <Polyline
+                  positions={[
+                    selectedFlight.originCoords,
+                    [selectedFlight.lat, selectedFlight.lon],
+                  ]}
+                  pathOptions={{
+                    color: NEON_GREEN,
+                    weight: 2,
+                    opacity: 0.6,
+                  }}
+                />
+              )}
               {/* Dashed line: plane -> destination (remaining) */}
               <Polyline
                 positions={[
@@ -375,11 +420,12 @@ export default function FlightMap({
         </div>
       )}
 
-      {/* Last updated */}
+      {/* Last updated (wire lastUpdated from live data when available) */}
       <div className="glass-card absolute bottom-4 left-4 z-500 flex items-center gap-2 px-3 py-1.5">
         <span className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full" />
         <span className="text-muted-foreground font-mono text-[10px]">
-          LAST UPDATED: <span className="text-foreground">2s ago</span>
+          LAST UPDATED:{" "}
+          <span className="text-foreground">{lastUpdated ?? "—"}</span>
         </span>
       </div>
     </div>

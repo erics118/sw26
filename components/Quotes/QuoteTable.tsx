@@ -18,7 +18,6 @@ type QuoteCosts = {
   crew_overnight_cost: number;
   catering_cost: number;
   peak_day_surcharge: number;
-  operator_quoted_rate: number | null;
 };
 
 export type QuoteRow = {
@@ -49,7 +48,6 @@ export type QuoteRow = {
   delay_reason_code: string | null;
   clients: { name?: string } | null;
   aircraft: { tail_number?: string; category?: string } | null;
-  operators: { name?: string } | null;
   trips: { legs?: Array<{ from_icao: string; to_icao: string }> } | null;
   quote_costs: QuoteCosts[] | null;
 };
@@ -226,9 +224,6 @@ function QuoteDetailModal({
                 }
               />
             )}
-            {quote.operators?.name && (
-              <DetailRow label="Operator" value={quote.operators.name} />
-            )}
             {quote.broker_name && (
               <DetailRow label="Broker" value={quote.broker_name} />
             )}
@@ -260,12 +255,6 @@ function QuoteDetailModal({
                   </span>
                 }
               />
-              {costs.operator_quoted_rate != null && (
-                <DetailRow
-                  label="Operator rate"
-                  value={money(costs.operator_quoted_rate, cur)}
-                />
-              )}
             </div>
 
             {/* Cost breakdown */}

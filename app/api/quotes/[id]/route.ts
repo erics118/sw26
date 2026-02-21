@@ -20,9 +20,7 @@ export async function GET(_request: Request, { params }: RouteContext) {
 
   const { data, error } = await supabase
     .from("quotes")
-    .select(
-      "*, trips(*), clients(*), aircraft(*), operators(*), quote_costs(*)",
-    )
+    .select("*, trips(*), clients(*), aircraft(*), quote_costs(*)")
     .eq("id", id)
     .single();
 

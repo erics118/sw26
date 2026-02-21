@@ -5,19 +5,6 @@ create extension if not exists "uuid-ossp";
 -- Core tables
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- Operators
-create table operators (
-  id uuid primary key default uuid_generate_v4(),
-  created_at timestamptz default now(),
-  name text not null,
-  cert_number text,
-  cert_expiry date,
-  insurance_expiry date,
-  reliability_score numeric(3,1) default 5.0,
-  blacklisted boolean default false,
-  notes text
-);
-
 -- Clients (CRM)
 create table clients (
   id uuid primary key default uuid_generate_v4(),
@@ -37,7 +24,6 @@ create table aircraft (
   id uuid primary key default uuid_generate_v4(),
   created_at timestamptz default now(),
   tail_number text not null,
-  operator_id uuid references operators(id),
   category text not null, -- 'turboprop', 'light', 'midsize', 'super-mid', 'heavy', 'ultra-long'
   range_nm integer not null,
   cabin_height_in numeric(4,1),
@@ -63,7 +49,6 @@ create table aircraft (
 create table crew (
   id uuid primary key default uuid_generate_v4(),
   created_at timestamptz default now(),
-  operator_id uuid references operators(id),
   name text not null,
   role text not null, -- 'captain', 'first_officer', 'flight_attendant'
   ratings text[],
@@ -113,7 +98,6 @@ create table quotes (
   trip_id uuid references trips(id) not null,
   client_id uuid references clients(id),
   aircraft_id uuid references aircraft(id),
-  operator_id uuid references operators(id),
   status text not null default 'new', -- 'new','pricing','sent','negotiating','confirmed','lost','completed'
   version integer default 1,
   margin_pct numeric(5,2) default 15.0,
@@ -157,8 +141,7 @@ create table quote_costs (
   margin_amount numeric(10,2) default 0,
   tax numeric(10,2) default 0,
   total numeric(10,2) default 0,
-  per_leg_breakdown jsonb default '[]',
-  operator_quoted_rate numeric(10,2)
+  per_leg_breakdown jsonb default '[]'
 );
 
 -- Audit Logs (immutable)
@@ -260,7 +243,6 @@ create table route_plans (
 -- ─────────────────────────────────────────────────────────────────────────────
 
 alter table clients enable row level security;
-alter table operators enable row level security;
 alter table aircraft enable row level security;
 alter table crew enable row level security;
 alter table trips enable row level security;
@@ -273,7 +255,6 @@ alter table fleet_forecast_overrides enable row level security;
 alter table route_plans enable row level security;
 
 create policy "staff_all" on clients                  for all using (auth.role() = 'authenticated');
-create policy "staff_all" on operators                for all using (auth.role() = 'authenticated');
 create policy "staff_all" on aircraft                 for all using (auth.role() = 'authenticated');
 create policy "staff_all" on crew                     for all using (auth.role() = 'authenticated');
 create policy "staff_all" on trips                    for all using (auth.role() = 'authenticated');

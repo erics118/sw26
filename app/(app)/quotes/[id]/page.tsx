@@ -31,7 +31,6 @@ type QuoteDetail = {
     tail_number: string;
     category: string;
     range_nm: number;
-    operators: { name: string } | null;
   } | null;
   trips: {
     legs: Array<{
@@ -70,7 +69,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
         `
         *,
         clients(*),
-        aircraft(*, operators(name)),
+        aircraft(*),
         trips(*),
         quote_costs(*)
       `,

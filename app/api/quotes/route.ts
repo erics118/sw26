@@ -16,9 +16,7 @@ export async function GET(request: Request) {
 
   let query = supabase
     .from("quotes")
-    .select(
-      "*, trips(*), clients(*), aircraft(*), operators(*), quote_costs(*)",
-    )
+    .select("*, trips(*), clients(*), aircraft(*), quote_costs(*)")
     .order("created_at", { ascending: false });
 
   if (status) query = query.eq("status", status);
@@ -33,7 +31,7 @@ export async function GET(request: Request) {
 }
 
 // ─── POST /api/quotes ─────────────────────────────────────────────────────────
-// Body: { trip_id, aircraft_id?, operator_id?, client_id?, margin_pct?, notes? }
+// Body: { trip_id, aircraft_id?, client_id?, margin_pct?, notes? }
 
 export async function POST(request: Request) {
   const supabase = await createClient();

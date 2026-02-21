@@ -21,26 +21,6 @@ export const CreateClientSchema = ClientSchema.omit({
 });
 export type CreateClientInput = z.infer<typeof CreateClientSchema>;
 
-// ─── Operators ───────────────────────────────────────────────────────────────
-
-export const OperatorSchema = z.object({
-  id: z.string().uuid().optional(),
-  created_at: z.string().optional(),
-  name: z.string().min(1),
-  cert_number: z.string().nullable().optional(),
-  cert_expiry: z.string().nullable().optional(),
-  insurance_expiry: z.string().nullable().optional(),
-  reliability_score: z.number().min(0).max(10).default(5.0),
-  blacklisted: z.boolean().default(false),
-  notes: z.string().nullable().optional(),
-});
-
-export const CreateOperatorSchema = OperatorSchema.omit({
-  id: true,
-  created_at: true,
-});
-export type CreateOperatorInput = z.infer<typeof CreateOperatorSchema>;
-
 // ─── Aircraft ────────────────────────────────────────────────────────────────
 
 export const AircraftCategorySchema = z.enum([
@@ -56,7 +36,6 @@ export const AircraftSchema = z.object({
   id: z.string().uuid().optional(),
   created_at: z.string().optional(),
   tail_number: z.string().min(1),
-  operator_id: z.string().uuid().nullable().optional(),
   category: AircraftCategorySchema,
   range_nm: z.number().int().positive(),
   cabin_height_in: z.number().nullable().optional(),
@@ -85,7 +64,6 @@ export const CrewRoleSchema = z.enum([
 export const CrewSchema = z.object({
   id: z.string().uuid().optional(),
   created_at: z.string().optional(),
-  operator_id: z.string().uuid().nullable().optional(),
   name: z.string().min(1),
   role: CrewRoleSchema,
   ratings: z.array(z.string()).nullable().optional(),
@@ -151,7 +129,6 @@ export const QuoteSchema = z.object({
   trip_id: z.string().uuid(),
   client_id: z.string().uuid().nullable().optional(),
   aircraft_id: z.string().uuid().nullable().optional(),
-  operator_id: z.string().uuid().nullable().optional(),
   status: QuoteStatusSchema.default("new"),
   version: z.number().int().min(1).default(1),
   margin_pct: z.number().min(0).max(100).default(15),
@@ -205,7 +182,6 @@ export const QuoteCostSchema = z.object({
   tax: z.number().min(0).default(0),
   total: z.number().min(0).default(0),
   per_leg_breakdown: z.array(CostLineItemSchema).default([]),
-  operator_quoted_rate: z.number().nullable().optional(),
 });
 
 export const CreateQuoteCostSchema = QuoteCostSchema.omit({ id: true });

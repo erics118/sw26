@@ -174,38 +174,13 @@ export function createDatabaseTools(supabase: SupabaseClient) {
       },
     ),
 
-    // ── Operators & Crew ──────────────────────────────────────────────────────
+    // ── Crew ──────────────────────────────────────────────────────────────────
 
-    tool(
-      "list_operators",
-      "List all available charter operators.",
-      {
-        active_only: z
-          .boolean()
-          .optional()
-          .describe("If true, exclude blacklisted operators"),
-      },
-      async ({ active_only }) => {
-        let q = supabase.from("operators").select("*");
-        if (active_only) q = q.eq("blacklisted", false);
-        const { data, error } = await q;
-        if (error) return fail(error.message);
-        return ok(data ?? []);
-      },
-    ),
-
-    tool(
-      "list_crew",
-      "List crew members, optionally filtered by operator.",
-      { operator_id: z.string().uuid().optional() },
-      async ({ operator_id }) => {
-        let q = supabase.from("crew").select("*");
-        if (operator_id) q = q.eq("operator_id", operator_id);
-        const { data, error } = await q;
-        if (error) return fail(error.message);
-        return ok(data ?? []);
-      },
-    ),
+    tool("list_crew", "List all crew members.", {}, async () => {
+      const { data, error } = await supabase.from("crew").select("*");
+      if (error) return fail(error.message);
+      return ok(data ?? []);
+    }),
 
     // ── Pricing ───────────────────────────────────────────────────────────────
 
@@ -246,6 +221,13 @@ export function createDatabaseTools(supabase: SupabaseClient) {
           .describe(
             "True if any leg crosses into non-US airspace (ICAO not starting with K)",
           ),
+        fuel_price_override_usd: z
+          .number()
+          .positive()
+          .optional()
+          .describe(
+            "Override default fuel price in USD per gallon. If omitted, engine uses default.",
+          ),
       },
       async (args) => {
         const result = calculatePricing({
@@ -256,6 +238,7 @@ export function createDatabaseTools(supabase: SupabaseClient) {
           marginPct: args.margin_pct,
           cateringRequested: args.catering_requested,
           isInternational: args.is_international,
+          fuelPriceOverrideUsd: args.fuel_price_override_usd,
         });
         return ok(result);
       },
@@ -270,7 +253,6 @@ export function createDatabaseTools(supabase: SupabaseClient) {
         trip_id: z.string().uuid(),
         client_id: z.string().uuid().nullable().optional(),
         aircraft_id: z.string().uuid().nullable().optional(),
-        operator_id: z.string().uuid().nullable().optional(),
         margin_pct: z.number().default(15),
         currency: z.string().default("USD"),
         notes: z.string().nullable().optional(),

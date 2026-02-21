@@ -30,16 +30,6 @@ interface Aircraft {
   pax_capacity: number;
   has_wifi: boolean;
   has_bathroom: boolean;
-  operators: { name: string } | null;
-}
-
-interface Operator {
-  id: string;
-  name: string;
-  cert_expiry: string | null;
-  insurance_expiry: string | null;
-  reliability_score: number;
-  blacklisted: boolean;
 }
 
 interface RouteLeg {
@@ -114,11 +104,9 @@ export default function NewQuotePage() {
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
-  const [operators, setOperators] = useState<Operator[]>([]);
 
   const [selectedTripId, setSelectedTripId] = useState(tripIdParam ?? "");
   const [selectedAircraftId, setSelectedAircraftId] = useState("");
-  const [selectedOperatorId, setSelectedOperatorId] = useState("");
   const [marginPct, setMarginPct] = useState(20);
   const [notes, setNotes] = useState("");
 
@@ -134,26 +122,19 @@ export default function NewQuotePage() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: tripsData }, { data: aircraftData }, { data: opsData }] =
-        await Promise.all([
-          supabase
-            .from("trips")
-            .select("id, legs, trip_type, pax_adults, created_at")
-            .order("created_at", { ascending: false })
-            .limit(20),
-          supabase
-            .from("aircraft")
-            .select(
-              "id, tail_number, category, range_nm, pax_capacity, has_wifi, has_bathroom, operators(name)",
-            )
-            .order("tail_number"),
-          supabase
-            .from("operators")
-            .select(
-              "id, name, cert_expiry, insurance_expiry, reliability_score, blacklisted",
-            )
-            .order("name"),
-        ]);
+      const [{ data: tripsData }, { data: aircraftData }] = await Promise.all([
+        supabase
+          .from("trips")
+          .select("id, legs, trip_type, pax_adults, created_at")
+          .order("created_at", { ascending: false })
+          .limit(20),
+        supabase
+          .from("aircraft")
+          .select(
+            "id, tail_number, category, range_nm, pax_capacity, has_wifi, has_bathroom",
+          )
+          .order("tail_number"),
+      ]);
 
       type RawTrip = {
         id: string;
@@ -172,14 +153,12 @@ export default function NewQuotePage() {
         })),
       );
       setAircraft((aircraftData as unknown as Aircraft[]) ?? []);
-      setOperators((opsData as unknown as Operator[]) ?? []);
     }
     void load();
   }, [supabase]);
 
   const selectedTrip = trips.find((t) => t.id === selectedTripId);
   const selectedAircraft = aircraft.find((a) => a.id === selectedAircraftId);
-  const selectedOperator = operators.find((o) => o.id === selectedOperatorId);
 
   const tripRoute = selectedTrip
     ? selectedTrip.legs.length > 0
@@ -227,8 +206,8 @@ export default function NewQuotePage() {
   }, [selectedTripId, selectedAircraftId, optimizationMode, trips]);
 
   async function handleSave() {
-    if (!selectedTripId || !selectedAircraftId || !selectedOperatorId) {
-      setError("Select a trip, aircraft, and operator.");
+    if (!selectedTripId || !selectedAircraftId) {
+      setError("Select a trip and aircraft.");
       return;
     }
     setSaving(true);
@@ -240,7 +219,6 @@ export default function NewQuotePage() {
         body: JSON.stringify({
           trip_id: selectedTripId,
           aircraft_id: selectedAircraftId,
-          operator_id: selectedOperatorId,
           margin_pct: marginPct,
           notes: notes || null,
           status: "sent",
@@ -280,14 +258,14 @@ export default function NewQuotePage() {
     }
   }
 
-  const canSave = selectedTripId && selectedAircraftId && selectedOperatorId;
+  const canSave = selectedTripId && selectedAircraftId;
 
   return (
     <div className="p-8">
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-zinc-100">New Quote</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Select trip, aircraft, and operator to build the quote.
+          Select trip and aircraft to build the quote.
         </p>
       </div>
 
@@ -396,11 +374,6 @@ export default function NewQuotePage() {
                         <span>{a.pax_capacity} pax</span>
                         {a.has_wifi && <span>wifi</span>}
                       </div>
-                      {a.operators && (
-                        <div className="mt-0.5 text-xs text-zinc-700">
-                          {a.operators.name}
-                        </div>
-                      )}
                     </button>
                   );
                 })}
@@ -550,85 +523,12 @@ export default function NewQuotePage() {
               </div>
             </Card>
           )}
-
-          {/* Operator */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Operator</CardTitle>
-            </CardHeader>
-            {operators.length === 0 ? (
-              <p className="text-sm text-zinc-600">
-                No operators found.{" "}
-                <a
-                  href="/operators"
-                  className="text-amber-400 hover:text-amber-300"
-                >
-                  Add operator →
-                </a>
-              </p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {operators.map((op) => {
-                  const isSelected = op.id === selectedOperatorId;
-                  const now = new Date();
-                  const certOk =
-                    !op.cert_expiry || new Date(op.cert_expiry) > now;
-                  const insOk =
-                    !op.insurance_expiry || new Date(op.insurance_expiry) > now;
-                  return (
-                    <button
-                      key={op.id}
-                      onClick={() => {
-                        setSelectedOperatorId(op.id);
-                      }}
-                      disabled={op.blacklisted}
-                      className={`rounded-md border px-3 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                        isSelected
-                          ? "border-amber-400/50 bg-amber-400/5"
-                          : "border-zinc-800 hover:border-zinc-700"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium text-zinc-200">
-                          {op.name}
-                        </span>
-                        {op.blacklisted && (
-                          <span className="text-xs text-red-400">
-                            blacklisted
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-1 flex gap-3 text-xs">
-                        <span
-                          className={
-                            certOk ? "text-emerald-500" : "text-red-400"
-                          }
-                        >
-                          cert {certOk ? "✓" : "expired"}
-                        </span>
-                        <span
-                          className={
-                            insOk ? "text-emerald-500" : "text-red-400"
-                          }
-                        >
-                          ins {insOk ? "✓" : "expired"}
-                        </span>
-                        <span className="text-zinc-600">
-                          {op.reliability_score.toFixed(1)} rel
-                        </span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </Card>
         </div>
 
         {/* Right sidebar — settings */}
         <div className="space-y-5">
           {/* Selection summary */}
-          {(selectedTrip || selectedAircraft || selectedOperator) && (
+          {(selectedTrip || selectedAircraft) && (
             <Card>
               <CardHeader>
                 <CardTitle>Selection</CardTitle>
@@ -647,14 +547,6 @@ export default function NewQuotePage() {
                     <span className="text-zinc-600">Aircraft</span>
                     <span className="font-mono text-zinc-300">
                       {selectedAircraft.tail_number}
-                    </span>
-                  </div>
-                )}
-                {selectedOperator && (
-                  <div className="flex justify-between">
-                    <span className="text-zinc-600">Operator</span>
-                    <span className="text-zinc-300">
-                      {selectedOperator.name}
                     </span>
                   </div>
                 )}
@@ -683,7 +575,7 @@ export default function NewQuotePage() {
                 </span>
               </div>
               <p className="text-xs text-zinc-600">
-                Applied on top of operator costs
+                Applied on top of cost breakdown
               </p>
             </div>
           </Card>
