@@ -43,13 +43,21 @@ type ForecastData = {
     aircraft_category: string;
     status: "shortage" | "balanced" | "surplus";
     capacity_gap_aircraft: number;
+    capacity_gap_hours: number;
   }>;
 };
 
 type UtilizationData = {
-  underutilized_count: number;
-  overconstrained_count: number;
-  avg_utilization_rate: number;
+  aircraft: Array<{
+    aircraft_id: string;
+    utilization_rate: number;
+  }>;
+  by_category: Array<{
+    aircraft_category: string;
+    avg_utilization_rate: number;
+    underutilized_count: number;
+    overconstrained_count: number;
+  }>;
 };
 
 type RecommendationData = {
@@ -183,15 +191,36 @@ export default function DashboardPage() {
   const conversionRate =
     sentQuotes > 0 ? Math.round((confirmedQuotes / sentQuotes) * 100) : 0;
 
-  // Fleet health metrics
-  const underutilizedCount = utilizationData?.underutilized_count || 0;
-  const overconstrained = utilizationData?.overconstrained_count || 0;
-  const avgUtil = utilizationData?.avg_utilization_rate || 0;
+  // Fleet health metrics from utilization API
+  const underutilizedCount =
+    utilizationData?.by_category?.reduce(
+      (sum, cat) => sum + (cat.underutilized_count ?? 0),
+      0,
+    ) || 0;
+  const overconstrained =
+    utilizationData?.by_category?.reduce(
+      (sum, cat) => sum + (cat.overconstrained_count ?? 0),
+      0,
+    ) || 0;
+  const avgUtil = utilizationData?.by_category?.length
+    ? Math.round(
+        (utilizationData.by_category.reduce(
+          (sum, cat) => sum + (cat.avg_utilization_rate ?? 0),
+          0,
+        ) /
+          utilizationData.by_category.length) *
+          100,
+      )
+    : 0;
 
-  // Shortage check
+  // Shortage check - count categories with shortage status
   const shortageCount =
     forecastData?.planes_needed?.filter((p) => p.status === "shortage")
       .length || 0;
+  const shortageHours =
+    forecastData?.planes_needed
+      ?.filter((p) => p.status === "shortage")
+      .reduce((sum, p) => sum + (p.capacity_gap_hours || 0), 0) || 0;
 
   return (
     <div className="p-8">
@@ -227,11 +256,12 @@ export default function DashboardPage() {
         <KPICard
           label="Conversion Rate"
           value={`${conversionRate}%`}
-          subLabel="sent → confirmed"
+          subLabel={`${sentQuotes} sent, ${confirmedQuotes} confirmed`}
+          accent={conversionRate > 50}
         />
         <KPICard
           label="Fleet Utilization"
-          value={`${Math.round(avgUtil)}%`}
+          value={`${avgUtil}%`}
           subLabel="average health"
           accent={avgUtil > 70}
         />
@@ -243,8 +273,12 @@ export default function DashboardPage() {
         />
         <KPICard
           label="Shortage Risk"
-          value={shortageCount}
-          subLabel="next 7 days"
+          value={shortageCount > 0 ? shortageCount : "—"}
+          subLabel={
+            shortageCount > 0
+              ? `${shortageHours.toFixed(1)} hours gap`
+              : "next 7 days"
+          }
           accent={shortageCount > 0}
         />
       </div>
