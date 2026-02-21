@@ -157,17 +157,15 @@ export default function FlightMap({
 }: FlightMapProps) {
   const [hoveredFlight, setHoveredFlight] = useState<Flight | null>(null);
   const [mapReady, setMapReady] = useState(false);
-  const [routeVisible, setRouteVisible] = useState(false);
+  const [routeVisibleForId, setRouteVisibleForId] = useState<string | null>(
+    null,
+  );
+  const routeVisible = routeVisibleForId === selectedId;
   const airborneFlights = useMemo(
     () => flights.filter((f) => f.inAir),
     [flights],
   );
   const selectedFlight = flights.find((f) => f.id === selectedId) || null;
-
-  // Reset route visibility when selection changes
-  useEffect(() => {
-    setRouteVisible(false);
-  }, [selectedId]);
 
   const handleHover = useCallback(
     (f: Flight | null) => setHoveredFlight(f),
@@ -178,13 +176,16 @@ export default function FlightMap({
     [onSelectFlight],
   );
   const handleMapReady = useCallback(() => setMapReady(true), []);
-  const handleFlyComplete = useCallback(() => setRouteVisible(true), []);
+  const handleFlyComplete = useCallback(
+    () => setRouteVisibleForId(selectedId ?? null),
+    [selectedId],
+  );
 
   return (
     <div className="relative h-full w-full">
       {/* Loading overlay */}
       {!mapReady && (
-        <div className="bg-background absolute inset-0 z-[1000] flex flex-col items-center justify-center">
+        <div className="bg-background absolute inset-0 z-1000 flex flex-col items-center justify-center">
           <div className="relative mb-6">
             {/* Radar rings */}
             <div className="absolute inset-0 flex items-center justify-center">
@@ -320,7 +321,7 @@ export default function FlightMap({
       {/* Hover tooltip */}
       {hoveredFlight && (
         <div
-          className="glass-card pointer-events-none absolute z-[500] min-w-[240px] p-3"
+          className="glass-card pointer-events-none absolute z-500 min-w-60 p-3"
           style={{ top: 80, right: 80 }}
         >
           <div className="mb-2 flex items-center justify-between">
@@ -375,7 +376,7 @@ export default function FlightMap({
       )}
 
       {/* Last updated */}
-      <div className="glass-card absolute bottom-4 left-4 z-[500] flex items-center gap-2 px-3 py-1.5">
+      <div className="glass-card absolute bottom-4 left-4 z-500 flex items-center gap-2 px-3 py-1.5">
         <span className="bg-primary h-1.5 w-1.5 animate-pulse rounded-full" />
         <span className="text-muted-foreground font-mono text-[10px]">
           LAST UPDATED: <span className="text-foreground">2s ago</span>

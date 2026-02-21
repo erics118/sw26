@@ -39,16 +39,29 @@ function computeHeading(
   return ((Math.atan2(y, x) * 180) / Math.PI + 360) % 360;
 }
 
-// Place aircraft along the great-circle route between origin and dest
+// Convert latitude (degrees) to Mercator y
+function toMercatorY(latDeg: number): number {
+  return Math.log(Math.tan(Math.PI / 4 + (latDeg * Math.PI) / 360));
+}
+
+// Convert Mercator y back to latitude (degrees)
+function fromMercatorY(y: number): number {
+  return (2 * Math.atan(Math.exp(y)) - Math.PI / 2) * (180 / Math.PI);
+}
+
+// Place aircraft along the route at `progress` (0–1).
+// Interpolates in Mercator space so the position lies on the straight
+// screen-space line between origin and destination (fixes off-route visuals).
 function positionAlongRoute(
   originCoords: [number, number],
   destCoords: [number, number],
-  progress: number, // 0-1, how far along the route
+  progress: number,
 ): { lat: number; lon: number } {
-  return {
-    lat: originCoords[0] + (destCoords[0] - originCoords[0]) * progress,
-    lon: originCoords[1] + (destCoords[1] - originCoords[1]) * progress,
-  };
+  const lon = originCoords[1] + (destCoords[1] - originCoords[1]) * progress;
+  const y1 = toMercatorY(originCoords[0]);
+  const y2 = toMercatorY(destCoords[0]);
+  const lat = fromMercatorY(y1 + (y2 - y1) * progress);
+  return { lat, lon };
 }
 
 const reasonsPool = [
