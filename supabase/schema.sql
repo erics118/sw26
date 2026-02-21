@@ -35,7 +35,7 @@ create table aircraft (
   notes text,
   -- migration 001_add_operational_fields
   status text not null default 'active',          -- 'active' | 'unavailable'
-  daily_available_hours numeric(4,1) default 24,
+  daily_available_hours numeric(4,1) default 8,
   -- migration 001_aircraft_performance
   cruise_speed_kts integer,                       -- knots; NULL → category default
   max_fuel_capacity_gal numeric(8,1),             -- usable gallons; NULL → category default

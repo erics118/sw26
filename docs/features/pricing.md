@@ -39,10 +39,10 @@ The **pricing engine** (`lib/pricing/engine.ts`) is a deterministic cost calcula
 
 ---
 
-## Category defaults (engine constants)
+## Category defaults
 
-- **Cruise speed (knots)** and **default fuel burn (gph)** by category: turboprop 250/55, light 420/100, midsize 450/155, super-mid 470/205, heavy 480/300, ultra-long 490/355.
-- **Repositioning $/hr:** turboprop 1500 → ultra-long 7000.
+- **Cruise speed and fuel burn** come from `lib/routing/performance.ts`: the pricing engine imports `CATEGORY_PERF` from there (single source of truth). Categories: turboprop, light, midsize, super-mid, heavy, ultra-long (with speedKts and defaultFuelBurnGph).
+- **Repositioning $/hr** (in `lib/pricing/engine.ts`): turboprop 1500 → ultra-long 7000.
 
 ---
 

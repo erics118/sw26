@@ -218,7 +218,9 @@ export default function IntakePage() {
                 <p className="text-sm text-zinc-500">
                   Extracting trip details…
                 </p>
-                <p className="mt-1 text-xs text-zinc-700">claude-sonnet-4-6</p>
+                <p className="mt-1 text-xs text-zinc-700">
+                  claude-haiku-4-5-20251001
+                </p>
               </div>
             </div>
           )}

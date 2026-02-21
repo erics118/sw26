@@ -20,6 +20,7 @@ import type {
   ForecastAccuracy,
   DelayReasonBreakdown,
 } from "@/lib/forecasting/types";
+import { formatFlightTime } from "@/lib/format";
 
 type Tab = "forecast" | "utilization" | "learning";
 type Horizon = 7 | 30 | 90;
@@ -358,9 +359,6 @@ export default function FleetForecastingPage() {
                       Utilization
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
-                      Empty leg %
-                    </th>
-                    <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
                       Idle days
                     </th>
                     <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
@@ -386,9 +384,6 @@ export default function FleetForecastingPage() {
                         <div className="w-32">
                           <UtilizationBar value={ac.utilization_rate} />
                         </div>
-                      </td>
-                      <td className="tabnum px-5 py-3 text-zinc-400">
-                        {(ac.empty_leg_ratio * 100).toFixed(0)}%
                       </td>
                       <td className="tabnum px-5 py-3 text-zinc-400">
                         {ac.idle_days}
@@ -418,7 +413,7 @@ export default function FleetForecastingPage() {
 
           {/* Recommendations */}
           {recsData && (
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-3">
                 <h3 className="text-xs font-semibold tracking-widest text-zinc-600 uppercase">
                   Reposition ({recsData.reposition.length})
@@ -429,20 +424,6 @@ export default function FleetForecastingPage() {
                   </p>
                 ) : (
                   recsData.reposition.map((r, i) => (
-                    <RecommendationCard key={i} rec={r} />
-                  ))
-                )}
-              </div>
-              <div className="space-y-3">
-                <h3 className="text-xs font-semibold tracking-widest text-zinc-600 uppercase">
-                  Empty legs ({recsData.empty_legs.length})
-                </h3>
-                {recsData.empty_legs.length === 0 ? (
-                  <p className="text-xs text-zinc-600">
-                    No idle aircraft next 48h
-                  </p>
-                ) : (
-                  recsData.empty_legs.map((r, i) => (
                     <RecommendationCard key={i} rec={r} />
                   ))
                 )}
@@ -517,10 +498,10 @@ export default function FleetForecastingPage() {
                             {a.aircraft_category}
                           </td>
                           <td className="tabnum py-2 text-right text-zinc-400">
-                            {a.predicted_hours.toFixed(1)} hrs
+                            {formatFlightTime(a.predicted_hours)}
                           </td>
                           <td className="tabnum py-2 text-right text-zinc-400">
-                            {a.actual_hours.toFixed(1)} hrs
+                            {formatFlightTime(a.actual_hours)}
                           </td>
                           <td
                             className={`tabnum py-2 text-right font-medium ${
@@ -570,7 +551,7 @@ export default function FleetForecastingPage() {
                         </span>
                         <div className="flex items-center gap-3">
                           <span className="tabnum text-zinc-600">
-                            {d.total_hours_lost.toFixed(1)} hrs lost
+                            {formatFlightTime(d.total_hours_lost)} lost
                           </span>
                           <Badge variant="zinc">{d.count}×</Badge>
                         </div>

@@ -44,7 +44,7 @@ export async function computeCapacity(
     if (!categoriesMap[cat]) categoriesMap[cat] = [];
     categoriesMap[cat].push({
       id: ac.id,
-      daily_available_hours: ac.daily_available_hours ?? 24,
+      daily_available_hours: ac.daily_available_hours ?? 8,
     });
   }
 

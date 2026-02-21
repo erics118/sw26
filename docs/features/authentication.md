@@ -20,15 +20,15 @@ Authentication is handled by **Supabase Auth** with cookie-based sessions. The a
 - Client Component (`app/(auth)/login/page.tsx`).
 - Uses Supabase **browser client** from `@/lib/supabase/client`.
 
-## Route protection (middleware)
+## Route protection (proxy)
 
-Auth is enforced in middleware (when present):
+Auth is enforced via **`proxy.ts`** at the project root (Next.js 16 proxy convention). The proxy runs on every request matched by its config (excluding static assets) and:
 
 - **`/`** → Redirect to `/dashboard` if authenticated, else `/login`.
-- **Protected routes** (e.g. under `(app)/`) → Redirect to `/login` if not authenticated.
+- **Protected routes** (all non-public paths) → Redirect to `/login` if not authenticated.
 - **`/login`** → Redirect to `/dashboard` if already authenticated.
 
-Protected areas include: dashboard, intake, quotes, clients, aircraft, fleet-forecasting.
+Protected areas include: dashboard, intake, quotes, clients, aircraft, fleet-forecasting. The proxy also refreshes the Supabase session (cookies) via `createServerClient` from `@supabase/ssr`.
 
 ## Session and sign out
 

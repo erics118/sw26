@@ -1,6 +1,7 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { calculatePricing } from "@/lib/pricing/engine";
+import { computeRoutePlan, RoutingError } from "@/lib/routing";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Json, TripLeg } from "@/lib/database.types";
 
@@ -129,6 +130,31 @@ export function createDatabaseTools(supabase: SupabaseClient) {
       },
     ),
 
+    tool(
+      "lookup_airport",
+      "Look up airport ICAO code by city name, airport name, or partial match. Fast DB lookup — use instead of WebFetch for airport resolution.",
+      {
+        query: z
+          .string()
+          .describe(
+            "City name, airport name, or partial text (e.g. 'Los Angeles', 'Teterboro', 'JFK')",
+          ),
+      },
+      async ({ query }) => {
+        const q = query.trim().replace(/'/g, "''");
+        if (!q) return ok([]);
+        const { data, error } = await supabase
+          .from("airports")
+          .select("icao, iata, name, city, country_code")
+          .or(
+            `city.ilike.%${q}%,name.ilike.%${q}%,icao.ilike.%${q}%,iata.ilike.%${q}%`,
+          )
+          .limit(5);
+        if (error) return fail(error.message);
+        return ok(data ?? []);
+      },
+    ),
+
     // ── Aircraft ──────────────────────────────────────────────────────────────
 
     tool(
@@ -182,6 +208,120 @@ export function createDatabaseTools(supabase: SupabaseClient) {
       if (error) return fail(error.message);
       return ok(data ?? []);
     }),
+
+    // ── Routing ───────────────────────────────────────────────────────────────
+
+    tool(
+      "compute_route_plan",
+      "Compute a full route plan for an aircraft and trip legs. Returns optimized route (including fuel stops), weather summaries, NOTAM alerts, risk score, on-time probability, and cost breakdown. Use cost_breakdown.avg_fuel_price_usd_gal as fuel_price_override_usd when calling calculate_pricing.",
+      {
+        aircraft_id: z.string().uuid(),
+        legs: z
+          .array(
+            z.object({
+              from_icao: z.string(),
+              to_icao: z.string(),
+              date: z.string().describe("ISO YYYY-MM-DD"),
+              time: z.string().describe("HH:MM 24h"),
+            }),
+          )
+          .min(1),
+        optimization_mode: z
+          .enum(["cost", "time", "balanced"])
+          .default("balanced")
+          .describe(
+            "cost = minimize fuel cost; time = minimize flight time; balanced = trade-off",
+          ),
+      },
+      async ({ aircraft_id, legs, optimization_mode }) => {
+        try {
+          const result = await computeRoutePlan({
+            aircraft_id,
+            legs,
+            optimization_mode,
+          });
+          return ok(result);
+        } catch (err) {
+          if (err instanceof RoutingError) {
+            return fail(`${err.code}: ${err.message}`);
+          }
+          return fail(err instanceof Error ? err.message : "Routing failed");
+        }
+      },
+    ),
+
+    tool(
+      "save_route_plan",
+      "Persist a route plan to the database, linked to a quote. Call after save_quote when you have a quote_id. Pass the full result from compute_route_plan.",
+      {
+        quote_id: z.string().uuid(),
+        trip_id: z.string().uuid().nullable().optional(),
+        aircraft_id: z.string().uuid(),
+        optimization_mode: z.enum(["cost", "time", "balanced"]),
+        route_legs: z.array(z.any()),
+        refuel_stops: z.array(z.any()),
+        weather_summary: z.array(z.any()),
+        notam_alerts: z.array(z.any()),
+        alternatives: z.array(z.any()),
+        cost_breakdown: z.record(z.string(), z.any()),
+        total_distance_nm: z.number(),
+        total_flight_time_hr: z.number(),
+        total_fuel_cost_usd: z.number(),
+        risk_score: z.number(),
+        on_time_probability: z.number(),
+      },
+      async (args) => {
+        const {
+          route_legs,
+          refuel_stops,
+          weather_summary,
+          notam_alerts,
+          alternatives,
+          cost_breakdown,
+          total_distance_nm,
+          total_flight_time_hr,
+          total_fuel_cost_usd,
+          risk_score,
+          on_time_probability,
+          ...rest
+        } = args;
+        const { data: plan, error } = await supabase
+          .from("route_plans")
+          .insert({
+            ...rest,
+            route_legs: route_legs as unknown as Json,
+            refuel_stops: refuel_stops as unknown as Json,
+            weather_summary: weather_summary as unknown as Json,
+            notam_alerts: notam_alerts as unknown as Json,
+            alternatives: alternatives as unknown as Json,
+            cost_breakdown: cost_breakdown as unknown as Json,
+            total_distance_nm,
+            total_flight_time_hr,
+            total_fuel_cost: total_fuel_cost_usd,
+            risk_score,
+            on_time_probability,
+            weather_fetched_at: new Date().toISOString(),
+            notam_fetched_at: new Date().toISOString(),
+          })
+          .select("id")
+          .single();
+        if (error) return fail(error.message);
+        await supabase.from("audit_logs").insert({
+          action: "route_plan.computed",
+          entity_type: "route_plans",
+          entity_id: plan?.id ?? null,
+          ai_generated: true,
+          payload: {
+            aircraft_id: args.aircraft_id,
+            leg_count: route_legs.length,
+            stop_count: refuel_stops.length,
+            risk_score,
+            optimization_mode: args.optimization_mode,
+          },
+        });
+        return ok({ plan_id: plan?.id });
+      },
+    ),
 
     // ── Pricing ───────────────────────────────────────────────────────────────
 

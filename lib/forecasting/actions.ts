@@ -4,7 +4,6 @@ import type {
   UtilizationMetrics,
   ExpectedDemandDay,
   RepositionRecommendation,
-  EmptyLegRecommendation,
   MaintenanceWindowRecommendation,
 } from "./types";
 import { addDays, formatDate } from "./utils";
@@ -15,10 +14,8 @@ const REPOSITION_COST_PER_HOUR = 500;
 /**
  * Action Engine: generates recommendations for underutilized aircraft.
  *
- * Priority order:
  * 1. Reposition (best ROI)
- * 2. Empty-leg offer (monetize idle)
- * 3. Maintenance window (use planned downtime)
+ * 2. Maintenance window (use planned downtime)
  */
 export async function generateRecommendations(
   supabase: SupabaseClient<Database>,
@@ -27,7 +24,6 @@ export async function generateRecommendations(
   horizonDays: number = 7,
 ): Promise<{
   reposition: RepositionRecommendation[];
-  empty_legs: EmptyLegRecommendation[];
   maintenance_windows: MaintenanceWindowRecommendation[];
 }> {
   const today = new Date();
@@ -68,7 +64,6 @@ export async function generateRecommendations(
     .map(([icao]) => icao);
 
   const repositionRecs: RepositionRecommendation[] = [];
-  const emptyLegRecs: EmptyLegRecommendation[] = [];
   const maintenanceRecs: MaintenanceWindowRecommendation[] = [];
 
   for (const ac of underutilizedAircraft) {
@@ -115,26 +110,7 @@ export async function generateRecommendations(
       });
     }
 
-    // ─── B. Empty-Leg Offer ───────────────────────────────────────────────
-    // For aircraft idle in next 48h
-    if (ac.idle_days > 0) {
-      const offerDate = formatDate(addDays(today, 1));
-      const discountPct =
-        ac.utilization_rate < 0.3 ? 40 : ac.utilization_rate < 0.5 ? 30 : 20;
-
-      emptyLegRecs.push({
-        type: "empty_leg",
-        aircraft_id: ac.aircraft_id,
-        tail_number: ac.tail_number,
-        offer_date: offerDate,
-        from_icao: fromAirport,
-        to_icao: topAirports[0] ?? "KMIA",
-        recommended_discount_pct: discountPct,
-        reason: `Idle risk high — ${(ac.utilization_rate * 100).toFixed(0)}% utilization`,
-      });
-    }
-
-    // ─── C. Maintenance Window ────────────────────────────────────────────
+    // ─── B. Maintenance Window ────────────────────────────────────────────
     // Suggest scheduling maintenance during lowest-demand window
     const categoryDates = Object.entries(categoryDemand)
       .filter(
@@ -163,7 +139,6 @@ export async function generateRecommendations(
 
   return {
     reposition: repositionRecs.slice(0, 10),
-    empty_legs: emptyLegRecs.slice(0, 10),
     maintenance_windows: maintenanceRecs.slice(0, 10),
   };
 }

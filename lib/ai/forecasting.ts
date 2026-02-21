@@ -127,7 +127,6 @@ export async function generateUtilizationInsight(
       category: a.category,
       utilization_pct: (a.utilization_rate * 100).toFixed(1) + "%",
       idle_days: a.idle_days,
-      empty_leg_ratio_pct: (a.empty_leg_ratio * 100).toFixed(1) + "%",
     })),
     by_category: utilizationData.by_category.map((c) => ({
       category: c.aircraft_category,
@@ -177,7 +176,6 @@ Focus on highest-impact actions. Mention specific aircraft and airports.`,
       summary: `${underutilized.length} aircraft flagged as underutilized. Review reposition recommendations.`,
       actions: [
         "Execute top reposition recommendations",
-        "Publish empty-leg offers for idle aircraft",
         "Schedule maintenance during low-demand windows",
       ],
       confidence: "medium",

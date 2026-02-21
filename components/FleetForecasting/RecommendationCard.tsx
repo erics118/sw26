@@ -1,6 +1,7 @@
 "use client";
 
 import type { ActionRecommendation } from "@/lib/forecasting/types";
+import { formatFlightTime } from "@/lib/format";
 
 interface RecommendationCardProps {
   rec: ActionRecommendation;
@@ -47,60 +48,17 @@ export function RecommendationCard({ rec }: RecommendationCardProps) {
           <div>
             <p className="text-[10px] text-zinc-600">Repo hours</p>
             <p className="tabnum text-xs font-medium text-zinc-300">
-              {rec.estimated_reposition_hours.toFixed(1)} hrs
+              {formatFlightTime(rec.estimated_reposition_hours)}
             </p>
           </div>
           <div>
             <p className="text-[10px] text-zinc-600">Util gain</p>
             <p className="tabnum text-xs font-medium text-emerald-400">
-              +{rec.expected_utilization_gain.toFixed(1)} hrs
+              +{formatFlightTime(rec.expected_utilization_gain)}
             </p>
           </div>
         </div>
         <p className="mt-2 text-xs text-zinc-600">{rec.reason}</p>
-      </div>
-    );
-  }
-
-  if (rec.type === "empty_leg") {
-    return (
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded bg-blue-400/10 text-blue-400">
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-              </svg>
-            </span>
-            <div>
-              <p className="text-sm font-medium text-zinc-100">
-                Empty leg: {rec.tail_number}
-              </p>
-              <p className="text-xs text-zinc-500">
-                {rec.from_icao} → {rec.to_icao} on {rec.offer_date}
-              </p>
-            </div>
-          </div>
-          <span className="shrink-0 rounded bg-blue-400/10 px-2 py-0.5 text-xs font-medium text-blue-400">
-            discount offer
-          </span>
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <div>
-            <p className="text-[10px] text-zinc-600">Discount</p>
-            <p className="tabnum text-sm font-bold text-zinc-100">
-              {rec.recommended_discount_pct}% off
-            </p>
-          </div>
-          <p className="text-xs text-zinc-600">{rec.reason}</p>
-        </div>
       </div>
     );
   }

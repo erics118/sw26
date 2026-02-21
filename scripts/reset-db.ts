@@ -41,6 +41,15 @@ try {
 
   console.log("Resetting database…");
   await sql.unsafe(resetSql);
+
+  const testDataSql = readFileSync(
+    join(__dirname, "..", "supabase", "seed_comprehensive_testing.sql"),
+    "utf-8",
+  );
+
+  console.log("Seeding comprehensive testing data…");
+  await sql.unsafe(testDataSql);
+
   console.log("Done. Database is clean and seeded.");
 } finally {
   await sql.end();

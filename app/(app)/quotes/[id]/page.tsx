@@ -6,6 +6,7 @@ import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import StatusStepper from "@/components/ui/StatusStepper";
 import CostBreakdown from "@/components/ui/CostBreakdown";
 import type { RoutePlan } from "@/lib/database.types";
+import { formatFlightTime } from "@/lib/format";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -62,31 +63,56 @@ export default async function QuoteDetailPage({ params }: PageProps) {
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: rawQuote }, { data: rawRoutePlan }] = await Promise.all([
-    supabase
-      .from("quotes")
-      .select(
-        `
+  const [{ data: rawQuote }, { data: rawRoutePlan }, { data: rawAuditLog }] =
+    await Promise.all([
+      supabase
+        .from("quotes")
+        .select(
+          `
         *,
         clients(*),
         aircraft(*),
         trips(*),
         quote_costs(*)
       `,
-      )
-      .eq("id", id)
-      .single(),
-    supabase
-      .from("route_plans")
-      .select("*")
-      .eq("quote_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
+        )
+        .eq("id", id)
+        .single(),
+      supabase
+        .from("route_plans")
+        .select("*")
+        .eq("quote_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from("audit_logs")
+        .select("payload")
+        .eq("entity_type", "quotes")
+        .eq("entity_id", id)
+        .eq("action", "quote.created")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]);
 
   const quote = rawQuote as unknown as QuoteDetail | null;
   const routePlan = rawRoutePlan as unknown as RoutePlan | null;
+  const auditPayload = (
+    rawAuditLog as { payload?: Record<string, unknown> } | null
+  )?.payload;
+  const selectionReasoning =
+    auditPayload &&
+    typeof auditPayload.aircraft_explanation === "string" &&
+    typeof auditPayload.route_explanation === "string"
+      ? {
+          aircraft_explanation: auditPayload.aircraft_explanation as string,
+          route_explanation: auditPayload.route_explanation as string,
+          optimization_mode: auditPayload.optimization_mode as
+            | string
+            | undefined,
+        }
+      : null;
 
   if (!quote) notFound();
 
@@ -146,6 +172,32 @@ export default async function QuoteDetailPage({ params }: PageProps) {
       <Card className="mb-6">
         <StatusStepper status={quote.status} />
       </Card>
+
+      {/* AI selection reasoning */}
+      {selectionReasoning && (
+        <Card className="mb-6 border-amber-400/20 bg-amber-400/5">
+          <CardHeader>
+            <CardTitle>AI Selection</CardTitle>
+          </CardHeader>
+          <div className="space-y-3 text-sm">
+            <div>
+              <span className="text-zinc-500">Aircraft: </span>
+              <span className="text-zinc-300">
+                {selectionReasoning.aircraft_explanation}
+              </span>
+            </div>
+            <div>
+              <span className="text-zinc-500">
+                Route ({selectionReasoning.optimization_mode ?? "balanced"}
+                ):{" "}
+              </span>
+              <span className="text-zinc-300">
+                {selectionReasoning.route_explanation}
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-3 gap-5">
         {/* Cost breakdown */}
@@ -221,7 +273,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                     {
                       label: "Flight time",
                       value: routePlan.total_flight_time_hr
-                        ? `${routePlan.total_flight_time_hr.toFixed(1)} hr`
+                        ? formatFlightTime(routePlan.total_flight_time_hr)
                         : "—",
                     },
                     {
@@ -290,8 +342,8 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                           </span>
                         )}
                         <span className="tabnum ml-auto text-xs text-zinc-500">
-                          {leg.distance_nm} nm · {leg.flight_time_hr.toFixed(1)}{" "}
-                          hr
+                          {leg.distance_nm} nm ·{" "}
+                          {formatFlightTime(leg.flight_time_hr)}
                         </span>
                       </div>
                     ))}

@@ -6,7 +6,7 @@ import type { AirportRecord } from "./airport-db";
 import { haversineNm, isWithinCurfew } from "./airport-db";
 import type { AircraftPerf } from "./performance";
 import {
-  effectiveSpeedKts,
+  flightTimeHr,
   effectiveMinRunwayFt,
   fuelForLegGal,
 } from "./performance";
@@ -38,8 +38,7 @@ export function buildEdge(
   departureUtc?: Date,
 ): GraphEdge {
   const distNm = haversineNm(from, to);
-  const speedKts = effectiveSpeedKts(aircraft);
-  const flightTimeHr = distNm / speedKts;
+  const legFlightTimeHr = flightTimeHr(distNm, aircraft);
   const fuelBurnGal = fuelForLegGal(distNm, aircraft);
   const fuelPrice = to.fuel_price_usd_gal ?? globalFuelPrice;
   const fboFee = to.fbo_fee_usd ?? DEFAULT_FBO_FEE_USD;
@@ -52,7 +51,7 @@ export function buildEdge(
       from_icao: from.icao,
       to_icao: to.icao,
       distance_nm: distNm,
-      flight_time_hr: flightTimeHr,
+      flight_time_hr: legFlightTimeHr,
       fuel_cost_usd: fuelCostUsd,
       fbo_fee_usd: fboFee,
       is_viable: false,
@@ -65,7 +64,7 @@ export function buildEdge(
       from_icao: from.icao,
       to_icao: to.icao,
       distance_nm: distNm,
-      flight_time_hr: flightTimeHr,
+      flight_time_hr: legFlightTimeHr,
       fuel_cost_usd: fuelCostUsd,
       fbo_fee_usd: fboFee,
       is_viable: false,
@@ -75,14 +74,14 @@ export function buildEdge(
 
   if (departureUtc) {
     const arrivalUtc = new Date(
-      departureUtc.getTime() + flightTimeHr * 3600 * 1000,
+      departureUtc.getTime() + legFlightTimeHr * 3600 * 1000,
     );
     if (isWithinCurfew(to, arrivalUtc)) {
       return {
         from_icao: from.icao,
         to_icao: to.icao,
         distance_nm: distNm,
-        flight_time_hr: flightTimeHr,
+        flight_time_hr: legFlightTimeHr,
         fuel_cost_usd: fuelCostUsd,
         fbo_fee_usd: fboFee,
         is_viable: false,
@@ -95,7 +94,7 @@ export function buildEdge(
     from_icao: from.icao,
     to_icao: to.icao,
     distance_nm: distNm,
-    flight_time_hr: flightTimeHr,
+    flight_time_hr: legFlightTimeHr,
     fuel_cost_usd: fuelCostUsd,
     fbo_fee_usd: fboFee,
     is_viable: true,

@@ -54,7 +54,7 @@ Used in schema, pricing, and routing:
 | home_base_icao        | text         | Optional; used for repositioning cost                  |
 | notes                 | text         | Optional                                               |
 | status                | text         | 'active' \| 'unavailable', default 'active'            |
-| daily_available_hours | numeric(4,1) | Default 24                                             |
+| daily_available_hours | numeric(4,1) | Default 8 (realistic charter ops)                      |
 | cruise_speed_kts      | integer      | Optional; category default if null                     |
 | max_fuel_capacity_gal | numeric(8,1) | Optional                                               |
 | min_runway_ft         | integer      | Optional                                               |

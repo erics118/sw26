@@ -34,15 +34,16 @@ All require authentication.
 
 ### Flow
 
-1. **Trip:** Choose one of the last 20 trips (by created_at). Display: route (legs as ICAO chain), pax, date. Optional pre-select via `?trip_id=`.
-2. **Aircraft:** Choose from fleet list (tail, category, range, pax, wifi). Must select both trip and aircraft to enable "Plan Route" and "Save & Send Quote".
+**Auto-generate (when `?trip_id=` is present):** Visiting `/quotes/new?trip_id=<id>` (e.g. from intake) automatically triggers the quote agent. The AI selects the best aircraft and route plan, creates the quote, and redirects to the quote detail page. The user sees a loading state ("Generating quote…") during generation. If it fails, the manual form is shown.
+
+**Manual flow (no trip_id in URL):**
+
+1. **Trip:** Choose one of the last 20 trips (by created_at). Display: route (legs as ICAO chain), pax, date.
+2. **Aircraft:** Optional. Choose from fleet list (tail, category, range, pax, wifi). If omitted, AI selects the best.
 3. **Margin:** Slider 5–40% (default 20%); applied on top of cost breakdown.
 4. **Notes:** Optional text for the quote.
-5. **Route planning (optional):**
-   - Mode: **cost** | **balanced** | **time**.
-   - "Plan Route" → `POST /api/routing/plan` with `aircraft_id`, `legs`, `optimization_mode`.
-   - Result: route legs, refuel stops, weather go/nogo per ICAO, NOTAM alerts (caution/critical), distance, flight time, risk score, on-time probability, avg fuel price. If a route plan is computed and quote is saved, the plan is persisted with `quote_id` and the **average fuel price** from the plan is sent as `fuel_price_override_usd` to the quote API so pricing uses it.
-6. **Save:** "Save & Send Quote →" → `POST /api/quotes` with `trip_id`, `aircraft_id`, `margin_pct`, `notes`, `status: "sent"`, and optionally `fuel_price_override_usd` from the route plan. Then `POST /api/routing/plan` again with `quote_id` and `trip_id` to store the plan. Redirect to `/quotes/[id]`.
+5. **Route planning (preview):** When trip + aircraft are selected, route plan auto-runs. Mode: **cost** | **balanced** | **time**. AI chooses the best mode when saving.
+6. **Save:** "Save & Send Quote →" → `POST /api/quotes` with `trip_id`, optional `aircraft_id`, `margin_pct`, `notes`, `status: "sent"`. The quote agent computes route, pricing, and persists the quote + route plan.
 
 ### API (create quote)
 

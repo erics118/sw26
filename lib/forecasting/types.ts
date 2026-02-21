@@ -73,7 +73,6 @@ export interface UtilizationMetrics {
   category: string;
   home_base_icao: string | null;
   utilization_rate: number; // 0–1
-  empty_leg_ratio: number; // 0–1
   idle_days: number;
   paid_hours: number;
   reposition_hours: number;
@@ -105,17 +104,6 @@ export interface RepositionRecommendation {
   reason: string;
 }
 
-export interface EmptyLegRecommendation {
-  type: "empty_leg";
-  aircraft_id: string;
-  tail_number: string;
-  offer_date: string; // ISO date
-  from_icao: string;
-  to_icao: string;
-  recommended_discount_pct: number;
-  reason: string;
-}
-
 export interface MaintenanceWindowRecommendation {
   type: "maintenance_window";
   aircraft_id: string;
@@ -128,7 +116,6 @@ export interface MaintenanceWindowRecommendation {
 
 export type ActionRecommendation =
   | RepositionRecommendation
-  | EmptyLegRecommendation
   | MaintenanceWindowRecommendation;
 
 // ─── Forecast accuracy / learning ────────────────────────────────────────────
@@ -168,7 +155,6 @@ export interface UtilizationSummary {
 
 export interface RecommendationSummary {
   reposition: RepositionRecommendation[];
-  empty_legs: EmptyLegRecommendation[];
   maintenance_windows: MaintenanceWindowRecommendation[];
   generated_at: string;
 }

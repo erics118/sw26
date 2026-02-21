@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Badge, { statusVariant } from "@/components/ui/Badge";
 import Modal from "@/components/ui/Modal";
+import { formatFlightTime } from "@/lib/format";
 
 type QuoteCosts = {
   subtotal: number;
@@ -281,7 +282,8 @@ function QuoteDetailModal({
               {costs.repositioning_cost > 0 && (
                 <div className="flex justify-between text-xs">
                   <span className="text-zinc-500">
-                    Repositioning ({costs.repositioning_hours.toFixed(1)} hrs)
+                    Repositioning ({formatFlightTime(costs.repositioning_hours)}
+                    )
                   </span>
                   <span className="tabnum text-zinc-400">
                     {money(costs.repositioning_cost, cur)}
@@ -344,13 +346,13 @@ function QuoteDetailModal({
               {quote.scheduled_total_hours != null && (
                 <DetailRow
                   label="Total hours"
-                  value={`${quote.scheduled_total_hours.toFixed(1)} hrs`}
+                  value={formatFlightTime(quote.scheduled_total_hours)}
                 />
               )}
               {quote.estimated_total_hours != null && (
                 <DetailRow
                   label="Estimated hours"
-                  value={`${quote.estimated_total_hours.toFixed(1)} hrs`}
+                  value={formatFlightTime(quote.estimated_total_hours)}
                 />
               )}
             </div>
@@ -377,19 +379,19 @@ function QuoteDetailModal({
               {quote.actual_block_hours != null && (
                 <DetailRow
                   label="Block hours"
-                  value={`${quote.actual_block_hours.toFixed(1)} hrs`}
+                  value={formatFlightTime(quote.actual_block_hours)}
                 />
               )}
               {quote.actual_reposition_hours != null && (
                 <DetailRow
                   label="Reposition hours"
-                  value={`${quote.actual_reposition_hours.toFixed(1)} hrs`}
+                  value={formatFlightTime(quote.actual_reposition_hours)}
                 />
               )}
               {quote.actual_total_hours != null && (
                 <DetailRow
                   label="Total hours"
-                  value={`${quote.actual_total_hours.toFixed(1)} hrs`}
+                  value={formatFlightTime(quote.actual_total_hours)}
                 />
               )}
               {quote.delay_reason_code && (
