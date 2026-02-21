@@ -169,11 +169,6 @@ export default function Sidebar() {
             >
               {item.icon}
               {item.label}
-              {item.href === "/intake" && (
-                <span className="ml-auto flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[9px] font-bold text-zinc-950">
-                  +
-                </span>
-              )}
             </Link>
           );
         })}
