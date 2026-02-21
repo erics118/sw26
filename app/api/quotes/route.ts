@@ -135,7 +135,7 @@ export async function POST(request: Request) {
         trip_id: data.trip_id,
         client_id: data.client_id ?? null,
         aircraft_id: data.aircraft_id,
-        status: data.status ?? "pricing",
+        status: data.status ?? "new",
         version: 1,
         margin_pct: data.margin_pct ?? 15,
         currency: data.currency ?? "USD",
@@ -172,6 +172,14 @@ export async function POST(request: Request) {
     if (costsErr) {
       await supabase.from("quotes").delete().eq("id", quote.id);
       return NextResponse.json({ error: costsErr.message }, { status: 500 });
+    }
+
+    // Auto-update status to "pricing" now that quote has costs
+    if (quote.status === "new") {
+      await supabase
+        .from("quotes")
+        .update({ status: "pricing" })
+        .eq("id", quote.id);
     }
 
     await supabase
@@ -219,7 +227,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
-        quote: { ...quote, status: data.status ?? quote.status },
+        quote: {
+          ...quote,
+          status:
+            data.status ?? (quote.status === "new" ? "pricing" : quote.status),
+        },
         costs,
         line_items: pricing.line_items,
       },

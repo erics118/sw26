@@ -55,14 +55,12 @@ ${fuel_price_override_usd != null ? `FUEL PRICE OVERRIDE (preferred): Use fuel_p
 
 STEPS:
 1. Call get_trip to load the trip details (legs, pax count, wifi/bathroom requirements, preferred category, min cabin height).
-2. Call list_aircraft with filters matching the trip requirements.
-   - Set min_range_nm to the estimated total trip distance (use 500 nm per leg as a conservative estimate).
-   - Apply wifi_required, bathroom_required, min_pax, and category filters from the trip.
-   ${aircraft_id ? `- Use the specified aircraft ID.` : "- Compare eligible aircraft: for each candidate, call compute_route_plan with optimization_mode 'balanced'. Compare total_routing_cost_usd, total_flight_time_hr, risk_score, on_time_probability, refuel_stops count. Select the best aircraft and write a brief aircraft_explanation (e.g. 'Chose N123AB: lowest total cost, fewer fuel stops, acceptable risk score')."}
-3. For the chosen aircraft, compare route plan options: call compute_route_plan THREE times — once with "cost", once with "balanced", once with "time".
+2. Call list_aircraft with filters matching the trip requirements (min_range_nm ≈ 500 nm per leg, wifi_required, bathroom_required, min_pax, category from trip). You will get at most 5 aircraft.
+   ${aircraft_id ? `- Use the specified aircraft ID.` : "- Pick ONE aircraft: prefer preferred_category from the trip if it matches; otherwise pick the first/best by range. Do NOT call compute_route_plan for every candidate — that is slow. Pick one, then run route plans only for that aircraft."}
+3. For your chosen aircraft only, call compute_route_plan exactly THREE times — once with "cost", once with "balanced", once with "time". Pass skip_weather_notam: true for speed (quote does not need live weather/NOTAM).
    - Compare total_routing_cost_usd, total_flight_time_hr, risk_score, on_time_probability, and refuel_stops.
-   - Use trip context: if notes/special_needs mention "budget", "cost-sensitive", or "lowest price" → prefer cost. If "urgent", "time-sensitive", or "same day" → prefer time. Otherwise use balanced unless cost or time is clearly better.
-   - Select the best optimization_mode and write a brief route_explanation (e.g. 'Chose balanced: best trade-off between cost and time; cost mode saved $200 but added 45 min; time mode saved 30 min but added $800.').
+   - Use trip context: if notes/special_needs mention "budget" or "cost-sensitive" → prefer cost. If "urgent" or "time-sensitive" → prefer time. Otherwise use balanced unless cost or time is clearly better.
+   - Select the best optimization_mode and write a brief route_explanation.
 4. Call calculate_pricing for the selected aircraft using the chosen route plan's cost_breakdown.avg_fuel_price_usd_gal:
    - Set is_international = true if any leg has a non-US ICAO (not starting with 'K').
    - Set catering_requested = true if trip.catering_notes is non-null or notes mention catering.
@@ -81,24 +79,60 @@ STEPS:
    - aircraft_id: the aircraft you selected
    - Pass the full result from the chosen compute_route_plan call (the one matching your selected optimization_mode).
 
-After saving the quote and route plan, output ONLY this JSON (no markdown, no other text):
+After saving the quote and route plan, output ONLY this minimal JSON (no markdown, no other text). Do NOT repeat the full quote or costs — only quote_id, selection_reasoning, and line_items:
 {
-  "quote": { "<full quote object from save_quote>" },
-  "costs": { "<full costs object from save_quote>" },
-  "line_items": [ "<line_items array from calculate_pricing>" ],
+  "quote_id": "<the id from save_quote result>",
   "selection_reasoning": {
     "aircraft_id": "<uuid of selected aircraft>",
-    "aircraft_explanation": "<1-2 sentence explanation of why this aircraft was chosen>",
+    "aircraft_explanation": "<1-2 sentence explanation>",
     "optimization_mode": "<cost|balanced|time>",
-    "route_explanation": "<1-2 sentence explanation of why this route option was chosen vs the alternatives>"
-  }
+    "route_explanation": "<1-2 sentence explanation>"
+  },
+  "line_items": [ "<line_items array from calculate_pricing — array of { leg?, label, amount }>" ]
 }`;
 
-  return runAgent<QuoteAgentResult>({
+  type MinimalResult = {
+    quote_id: string;
+    selection_reasoning?: SelectionReasoning;
+    line_items?: CostLineItem[];
+  };
+
+  const minimal = await runAgent<MinimalResult>({
     serverName: "aviation_quote",
     dbTools,
     prompt,
     builtinTools: [],
     maxTurns: 20,
   });
+
+  if (!minimal.quote_id) {
+    throw new Error("Agent did not return quote_id");
+  }
+
+  const { data: quoteRow, error: quoteErr } = await supabase
+    .from("quotes")
+    .select("*")
+    .eq("id", minimal.quote_id)
+    .single();
+  if (quoteErr || !quoteRow) {
+    throw new Error(
+      `Quote not found after save: ${quoteErr?.message ?? "unknown"}`,
+    );
+  }
+
+  const { data: costsRow, error: costsErr } = await supabase
+    .from("quote_costs")
+    .select("*")
+    .eq("quote_id", minimal.quote_id)
+    .single();
+  if (costsErr || !costsRow) {
+    throw new Error(`Quote costs not found: ${costsErr?.message ?? "unknown"}`);
+  }
+
+  return {
+    quote: quoteRow as Quote,
+    costs: costsRow as QuoteCost,
+    line_items: minimal.line_items ?? [],
+    selection_reasoning: minimal.selection_reasoning,
+  };
 }

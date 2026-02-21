@@ -2,10 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import type { QuoteStatus } from "@/lib/database.types";
 
-const STEPS = ["new", "pricing", "sent", "negotiating", "confirmed"] as const;
-const TERMINAL = ["lost", "completed"] as const;
-const LABELS: Record<string, string> = {
+const STEPS = [
+  "new",
+  "pricing",
+  "sent",
+  "negotiating",
+  "confirmed",
+] as const satisfies readonly QuoteStatus[];
+
+const TERMINAL = [
+  "lost",
+  "completed",
+] as const satisfies readonly QuoteStatus[];
+
+const LABELS: Record<QuoteStatus, string> = {
   new: "New",
   pricing: "Pricing",
   sent: "Sent",
@@ -15,23 +27,20 @@ const LABELS: Record<string, string> = {
   completed: "Completed",
 };
 
-function allowedNextStatuses(from: string): string[] {
+function allowedNextStatuses(from: QuoteStatus): QuoteStatus[] {
   if (from === "lost" || from === "completed") return [];
   const fromIdx = STEPS.indexOf(from as (typeof STEPS)[number]);
-  const next: string[] = [];
-  // Forward steps
-  for (let i = fromIdx + 1; i < STEPS.length; i++) next.push(STEPS[i]);
-  // sent <-> negotiating
+  const next: QuoteStatus[] = [];
+  for (let i = fromIdx + 1; i < STEPS.length; i++) next.push(STEPS[i]!);
   if (from === "sent") next.push("negotiating");
   if (from === "negotiating") next.push("sent");
-  // Terminal from any active
-  next.push("lost", "completed");
+  next.push(...TERMINAL);
   return [...new Set(next)];
 }
 
 interface QuoteStatusUpdateProps {
   quoteId: string;
-  currentStatus: string;
+  currentStatus: QuoteStatus;
 }
 
 export default function QuoteStatusUpdate({
@@ -45,7 +54,7 @@ export default function QuoteStatusUpdate({
   const options = allowedNextStatuses(currentStatus);
   if (options.length === 0) return null;
 
-  async function handleChange(newStatus: string) {
+  async function handleChange(newStatus: QuoteStatus) {
     if (newStatus === currentStatus) return;
     setUpdating(true);
     setError("");
@@ -73,7 +82,7 @@ export default function QuoteStatusUpdate({
       <select
         value=""
         onChange={(e) => {
-          const v = e.target.value;
+          const v = e.target.value as QuoteStatus;
           if (v) handleChange(v);
           e.target.value = "";
         }}
@@ -83,7 +92,7 @@ export default function QuoteStatusUpdate({
         <option value="">—</option>
         {options.map((s) => (
           <option key={s} value={s}>
-            {LABELS[s] ?? s}
+            {LABELS[s]}
           </option>
         ))}
       </select>

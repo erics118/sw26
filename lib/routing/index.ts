@@ -63,21 +63,24 @@ export async function computeRoutePlan(
     ...new Set(optimized.route_legs.flatMap((l) => [l.from_icao, l.to_icao])),
   ];
 
-  // Determine trip date range for NOTAM lookups
-  const firstLeg = input.legs[0];
-  const lastLeg = input.legs[input.legs.length - 1];
-  const effectiveFrom = firstLeg?.date
-    ? new Date(`${firstLeg.date}T${firstLeg.time ?? "00:00"}:00Z`)
-    : new Date();
-  const effectiveTo = lastLeg?.date
-    ? new Date(new Date(`${lastLeg.date}T00:00:00Z`).getTime() + 86400000) // +1 day
-    : new Date(effectiveFrom.getTime() + 86400000);
+  let weatherSummary: Awaited<ReturnType<typeof fetchWeatherForIcaos>> = [];
+  let notamAlerts: Awaited<ReturnType<typeof fetchNotamsForRoute>> = [];
 
-  // Fetch weather and NOTAMs in parallel — both fail gracefully
-  const [weatherSummary, notamAlerts] = await Promise.all([
-    fetchWeatherForIcaos(icaos, aircraft).catch(() => []),
-    fetchNotamsForRoute(icaos, effectiveFrom, effectiveTo).catch(() => []),
-  ]);
+  if (!input.skip_weather_notam) {
+    const firstLeg = input.legs[0];
+    const lastLeg = input.legs[input.legs.length - 1];
+    const effectiveFrom = firstLeg?.date
+      ? new Date(`${firstLeg.date}T${firstLeg.time ?? "00:00"}:00Z`)
+      : new Date();
+    const effectiveTo = lastLeg?.date
+      ? new Date(new Date(`${lastLeg.date}T00:00:00Z`).getTime() + 86400000) // +1 day
+      : new Date(effectiveFrom.getTime() + 86400000);
+
+    [weatherSummary, notamAlerts] = await Promise.all([
+      fetchWeatherForIcaos(icaos, aircraft).catch(() => []),
+      fetchNotamsForRoute(icaos, effectiveFrom, effectiveTo).catch(() => []),
+    ]);
+  }
 
   // Risk scoring
   const isIntl = isInternationalRoute(icaos);

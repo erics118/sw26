@@ -99,6 +99,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     updates.margin_pct !== currentQuote.margin_pct
   ) {
     await repriceQuote(supabase, id, currentQuote, updates.margin_pct);
+    // Auto-update status to "pricing" after repricing if still "new"
+    if (currentQuote.status === "new") {
+      quoteUpdate.status = "pricing";
+    }
   }
 
   // Apply update
@@ -142,8 +146,10 @@ const STATUS_ORDER = [
 ] as const;
 
 function isValidTransition(from: string, to: string): boolean {
-  // Allow: forward through the funnel, or marking lost/completed from any active state
+  // Allow: forward through the funnel, sent <-> negotiating, or lost/completed from any active state
   if (to === "lost" || to === "completed") return from !== "lost";
+  if (from === "sent" && to === "negotiating") return true;
+  if (from === "negotiating" && to === "sent") return true;
   const fromIdx = STATUS_ORDER.indexOf(from as (typeof STATUS_ORDER)[number]);
   const toIdx = STATUS_ORDER.indexOf(to as (typeof STATUS_ORDER)[number]);
   return fromIdx !== -1 && toIdx !== -1 && toIdx > fromIdx;
