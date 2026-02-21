@@ -53,7 +53,6 @@ export default function NewAircraftPage() {
         throw new Error(err.error || "Failed to create aircraft");
       }
 
-      const aircraft = await res.json();
       router.push("/aircraft");
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
