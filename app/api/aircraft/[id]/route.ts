@@ -65,6 +65,23 @@ export async function DELETE(
   const { id } = await params;
   const supabase = await createClient();
 
+  // Nullify aircraft_id on related rows so FK constraints don't block the delete
+  const [quotesErr, routePlansErr] = await Promise.all([
+    supabase
+      .from("quotes")
+      .update({ aircraft_id: null })
+      .eq("aircraft_id", id)
+      .then((r) => r.error),
+    supabase
+      .from("route_plans")
+      .update({ aircraft_id: null })
+      .eq("aircraft_id", id)
+      .then((r) => r.error),
+  ]);
+
+  if (quotesErr) return dbError(quotesErr.message);
+  if (routePlansErr) return dbError(routePlansErr.message);
+
   const { error } = await supabase.from("aircraft").delete().eq("id", id);
 
   if (error) {

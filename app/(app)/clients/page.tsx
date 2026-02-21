@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Card from "@/components/ui/Card";
 import { formatDate } from "@/lib/format";
+import DeleteClientButton from "@/components/clients/DeleteClientButton";
 
 export default async function ClientsPage() {
   const supabase = await createClient();
@@ -47,14 +48,16 @@ export default async function ClientsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-800">
-                {["Name", "Company", "Contact", "Flags", "Added"].map((h) => (
-                  <th
-                    key={h}
-                    className="px-5 py-3 text-left text-xs font-semibold tracking-wider text-zinc-600 uppercase"
-                  >
-                    {h}
-                  </th>
-                ))}
+                {["Name", "Company", "Contact", "Flags", "Added", ""].map(
+                  (h) => (
+                    <th
+                      key={h}
+                      className="px-5 py-3 text-left text-xs font-semibold tracking-wider text-zinc-600 uppercase"
+                    >
+                      {h}
+                    </th>
+                  ),
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/50">
@@ -96,6 +99,9 @@ export default async function ClientsPage() {
                   </td>
                   <td className="px-5 py-3 text-xs text-zinc-600">
                     {formatDate(c.created_at)}
+                  </td>
+                  <td className="px-5 py-3 text-right">
+                    <DeleteClientButton clientId={c.id} clientName={c.name} />
                   </td>
                 </tr>
               ))}

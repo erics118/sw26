@@ -35,6 +35,38 @@ export async function GET(
   return NextResponse.json({ ...client, trips: tripsRes.data ?? [] });
 }
 
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+  const supabase = await createClient();
+
+  // Nullify client_id on related rows so FK constraints don't block the delete
+  const [tripsErr, quotesErr] = await Promise.all([
+    supabase
+      .from("trips")
+      .update({ client_id: null })
+      .eq("client_id", id)
+      .then((r) => r.error),
+    supabase
+      .from("quotes")
+      .update({ client_id: null })
+      .eq("client_id", id)
+      .then((r) => r.error),
+  ]);
+
+  if (tripsErr) return dbError(tripsErr.message);
+  if (quotesErr) return dbError(quotesErr.message);
+
+  const { error } = await supabase.from("clients").delete().eq("id", id);
+
+  if (error) {
+    return dbError(error.message);
+  }
+  return new NextResponse(null, { status: 204 });
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },

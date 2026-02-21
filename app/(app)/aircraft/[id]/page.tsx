@@ -3,16 +3,11 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Aircraft } from "@/lib/database.types";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
+import DeleteAircraftButton from "@/components/aircraft/DeleteAircraftButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
-
-const STATUS_STYLES: Record<string, string> = {
-  active: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
-  maintenance: "border-amber-400/30 bg-amber-400/10 text-amber-400",
-  inactive: "border-zinc-600/40 bg-zinc-700/20 text-zinc-500",
-};
 
 function DetailRow({
   label,
@@ -45,8 +40,12 @@ export default async function AircraftDetailPage({ params }: PageProps) {
 
   if (!aircraft) notFound();
 
-  const statusStyle =
-    STATUS_STYLES[aircraft.status] ?? STATUS_STYLES["inactive"];
+  const statusStyles: Record<string, string> = {
+    active: "border-emerald-500/30 bg-emerald-500/10 text-emerald-400",
+    maintenance: "border-amber-400/30 bg-amber-400/10 text-amber-400",
+    inactive: "border-zinc-600/40 bg-zinc-700/20 text-zinc-500",
+  };
+  const statusStyle = statusStyles[aircraft.status] ?? statusStyles["inactive"];
 
   return (
     <div className="mx-auto max-w-5xl p-8">
@@ -73,7 +72,7 @@ export default async function AircraftDetailPage({ params }: PageProps) {
               {aircraft.category}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
             <span
               className={`rounded border px-2.5 py-1 text-xs font-medium capitalize ${statusStyle}`}
             >
@@ -84,6 +83,10 @@ export default async function AircraftDetailPage({ params }: PageProps) {
                 {aircraft.home_base_icao}
               </span>
             )}
+            <DeleteAircraftButton
+              aircraftId={aircraft.id}
+              tailNumber={aircraft.tail_number}
+            />
           </div>
         </div>
       </div>
