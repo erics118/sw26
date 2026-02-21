@@ -37,18 +37,36 @@ type QuoteRow = {
 export default async function DashboardPage() {
   const supabase = await createClient();
 
-  const [{ data: rawQuotes }, { data: trips }] = await Promise.all([
-    supabase
-      .from("quotes")
-      .select(
-        "id, status, created_at, confirmed_at, clients(name), trips(legs)",
-      )
-      .order("created_at", { ascending: false })
-      .limit(20),
-    supabase.from("trips").select("id", { count: "exact" }),
-  ]);
+  const [{ data: rawQuotes }, { data: trips }, { data: rawOperators }] =
+    await Promise.all([
+      supabase
+        .from("quotes")
+        .select(
+          "id, status, created_at, confirmed_at, clients(name), trips(legs)",
+        )
+        .order("created_at", { ascending: false })
+        .limit(20),
+      supabase
+        .from("trips")
+        .select("id", { count: "exact" })
+        .gte(
+          "requested_departure_window_start",
+          new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
+        )
+        .lte(
+          "requested_departure_window_start",
+          new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
+        ),
+      supabase
+        .from("operators")
+        .select("id, name, cert_expiry, insurance_expiry, reliability_score"),
+    ]);
 
   const quotes = rawQuotes as unknown as QuoteRow[] | null;
+  const operators = rawOperators as unknown as Array<{
+    cert_expiry: string | null;
+    insurance_expiry: string | null;
+  }> | null;
 
   const now = new Date();
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -64,10 +82,23 @@ export default async function DashboardPage() {
         new Date(q.confirmed_at) >= weekAgo,
     ).length ?? 0;
 
+  const expiringSoon =
+    operators?.filter((op) => {
+      const certExpiry = op.cert_expiry ? new Date(op.cert_expiry) : null;
+      const insExpiry = op.insurance_expiry
+        ? new Date(op.insurance_expiry)
+        : null;
+      const thirtyDays = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      return (
+        (certExpiry && certExpiry <= thirtyDays) ||
+        (insExpiry && insExpiry <= thirtyDays)
+      );
+    }).length ?? 0;
+
   const recentQuotes = quotes?.slice(0, 8) ?? [];
 
   return (
-    <div className="p-8">
+    <div className="page-in p-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-semibold text-zinc-100">
@@ -84,10 +115,16 @@ export default async function DashboardPage() {
       </div>
 
       {/* KPI row */}
-      <div className="mb-8 grid grid-cols-3 gap-4">
+      <div className="mb-8 grid grid-cols-4 gap-4">
         {kpiCard("Open Quotes", openQuotes, "active pipeline", openQuotes > 0)}
         {kpiCard("Confirmed This Week", confirmedThisWeek, "last 7 days")}
-        {kpiCard("Total Trips", trips?.length ?? 0, "all time")}
+        {kpiCard("Current Trips", trips?.length ?? 0, "departing today")}
+        {kpiCard(
+          "Compliance Alerts",
+          expiringSoon,
+          "expiring within 30 days",
+          expiringSoon > 0,
+        )}
       </div>
 
       {/* Live Operations */}

@@ -121,7 +121,7 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="flex h-screen w-56 flex-col border-r border-zinc-800 bg-zinc-950">
+    <aside className="sidebar-in flex h-screen w-56 flex-col border-r border-zinc-800 bg-zinc-950">
       {/* Logo */}
       <div className="flex h-14 items-center gap-2.5 border-b border-zinc-800 px-4">
         <div className="flex h-7 w-7 items-center justify-center rounded bg-amber-400 text-zinc-950">
@@ -130,7 +130,7 @@ export default function Sidebar() {
           </svg>
         </div>
         <span className="font-display text-base font-normal tracking-tight text-zinc-100 italic">
-          SkyWorks
+          SkyOps
         </span>
       </div>
 
