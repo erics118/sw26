@@ -69,7 +69,8 @@ create table trips (
   pax_adults integer default 1,
   pax_children integer default 0,
   pax_pets integer default 0,
-  flexibility_hours integer default 0,
+  flexibility_hours integer default 0,           -- departure/outbound ±hours
+  flexibility_hours_return integer default 0,   -- return leg ±hours (round_trip)
   special_needs text,
   catering_notes text,
   luggage_notes text,

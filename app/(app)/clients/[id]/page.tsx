@@ -19,9 +19,14 @@ interface PageProps {
 
 export default async function ClientDetailPage({ params }: PageProps) {
   const { id } = await params;
+  if (!id) notFound();
+
   const supabase = await createClient();
 
-  const [{ data: rawClient }, { data: rawQuotes }] = await Promise.all([
+  const [
+    { data: rawClient, error: clientError },
+    { data: rawQuotes, error: quotesError },
+  ] = await Promise.all([
     supabase.from("clients").select("*").eq("id", id).single(),
     supabase
       .from("quotes")
@@ -30,8 +35,17 @@ export default async function ClientDetailPage({ params }: PageProps) {
       .order("created_at", { ascending: false }),
   ]);
 
+  if (clientError && clientError.code !== "PGRST116") {
+    console.error("[clients/[id]] client fetch error:", clientError);
+  }
+  if (quotesError) {
+    console.error("[clients/[id]] quotes fetch error:", quotesError);
+  }
+
   const client = rawClient as unknown as Client | null;
-  const quotes = rawQuotes as unknown as QuoteRow[] | null;
+  const quotes = (quotesError ? null : rawQuotes) as unknown as
+    | QuoteRow[]
+    | null;
 
   if (!client) notFound();
 

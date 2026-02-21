@@ -45,6 +45,14 @@ export const AircraftSchema = z.object({
   has_bathroom: z.boolean().default(false),
   home_base_icao: z.string().length(4).nullable().optional(),
   notes: z.string().nullable().optional(),
+  status: z.enum(["active", "unavailable"]).default("active"),
+  daily_available_hours: z.number().min(0).default(8),
+  cruise_speed_kts: z.number().int().positive().nullable().optional(),
+  max_fuel_capacity_gal: z.number().positive().nullable().optional(),
+  min_runway_ft: z.number().int().positive().nullable().optional(),
+  etops_certified: z.boolean().default(false),
+  max_payload_lbs: z.number().positive().nullable().optional(),
+  reserve_fuel_gal: z.number().positive().nullable().optional(),
 });
 
 export const CreateAircraftSchema = AircraftSchema.omit({
@@ -69,6 +77,7 @@ export const CrewSchema = z.object({
   ratings: z.array(z.string()).nullable().optional(),
   duty_hours_this_week: z.number().min(0).default(0),
   last_duty_end: z.string().nullable().optional(),
+  available_hours_per_day: z.number().min(0).default(10),
 });
 
 export const CreateCrewSchema = CrewSchema.omit({ id: true, created_at: true });
@@ -96,6 +105,7 @@ export const TripSchema = z.object({
   pax_children: z.number().int().min(0).default(0),
   pax_pets: z.number().int().min(0).default(0),
   flexibility_hours: z.number().int().min(0).default(0),
+  flexibility_hours_return: z.number().int().min(0).default(0),
   special_needs: z.string().nullable().optional(),
   catering_notes: z.string().nullable().optional(),
   luggage_notes: z.string().nullable().optional(),
@@ -122,6 +132,14 @@ export const QuoteStatusSchema = z.enum([
   "completed",
 ]);
 
+export const WonLostReasonSchema = z.enum([
+  "price",
+  "availability",
+  "client_cancelled",
+  "competitor",
+  "other",
+]);
+
 export const QuoteSchema = z.object({
   id: z.string().uuid().optional(),
   created_at: z.string().optional(),
@@ -136,6 +154,9 @@ export const QuoteSchema = z.object({
   broker_name: z.string().nullable().optional(),
   broker_commission_pct: z.number().min(0).max(100).nullable().optional(),
   notes: z.string().nullable().optional(),
+  quote_valid_until: z.string().nullable().optional(),
+  estimated_total_hours: z.number().min(0).nullable().optional(),
+  won_lost_reason: WonLostReasonSchema.nullable().optional(),
   sent_at: z.string().nullable().optional(),
   confirmed_at: z.string().nullable().optional(),
 });
@@ -146,6 +167,7 @@ export const CreateQuoteSchema = QuoteSchema.omit({
   updated_at: true,
 }).extend({
   fuel_price_override_usd: z.number().positive().optional(),
+  route_plan_id: z.string().uuid().optional(),
 });
 export type CreateQuoteInput = z.infer<typeof CreateQuoteSchema>;
 
@@ -155,6 +177,9 @@ export const UpdateQuoteSchema = z.object({
   notes: z.string().nullable().optional(),
   broker_name: z.string().nullable().optional(),
   broker_commission_pct: z.number().nullable().optional(),
+  quote_valid_until: z.string().nullable().optional(),
+  estimated_total_hours: z.number().min(0).nullable().optional(),
+  won_lost_reason: WonLostReasonSchema.nullable().optional(),
 });
 export type UpdateQuoteInput = z.infer<typeof UpdateQuoteSchema>;
 

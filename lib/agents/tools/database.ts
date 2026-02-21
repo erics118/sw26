@@ -68,6 +68,7 @@ export function createDatabaseTools(supabase: SupabaseClient) {
         pax_children: z.number().int().min(0).default(0),
         pax_pets: z.number().int().min(0).default(0),
         flexibility_hours: z.number().int().min(0).default(0),
+        flexibility_hours_return: z.number().int().min(0).default(0),
         special_needs: z.string().nullable().optional(),
         catering_notes: z.string().nullable().optional(),
         luggage_notes: z.string().nullable().optional(),

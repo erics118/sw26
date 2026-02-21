@@ -19,6 +19,7 @@ interface Extracted {
   pax_children: number;
   pax_pets: number;
   flexibility_hours: number;
+  flexibility_hours_return: number;
   special_needs: string | null;
   catering_notes: string | null;
   luggage_notes: string | null;
@@ -117,7 +118,11 @@ export default function IntakePage() {
       const data = (await res.json()) as IntakeResult & { error?: string };
       if (!res.ok) throw new Error(data.error ?? "Extraction failed");
       setResult(data);
-      setEx(data.extracted);
+      setEx({
+        ...data.extracted,
+        flexibility_hours_return:
+          (data.extracted as Extracted).flexibility_hours_return ?? 0,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
@@ -262,7 +267,7 @@ export default function IntakePage() {
                     />
                   </div>
                 ))}
-                <div className="mt-1 flex items-center gap-3">
+                <div className="mt-1 flex flex-wrap items-center gap-3">
                   <span className="text-xs text-zinc-600">Type:</span>
                   <select
                     value={ex.trip_type}
@@ -275,9 +280,10 @@ export default function IntakePage() {
                       </option>
                     ))}
                   </select>
-                  <span className="text-xs text-zinc-600">Flex:</span>
+                  <span className="text-xs text-zinc-600">Flex dep:</span>
                   <input
                     type="number"
+                    min={0}
                     value={ex.flexibility_hours}
                     onChange={(e) =>
                       updateEx(
@@ -285,9 +291,28 @@ export default function IntakePage() {
                         parseInt(e.target.value) || 0,
                       )
                     }
-                    className="w-14 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300"
+                    className="w-12 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300"
                   />
                   <span className="text-xs text-zinc-600">hrs</span>
+                  {(ex.trip_type === "round_trip" ||
+                    ex.trip_type === "multi_leg") && (
+                    <>
+                      <span className="text-xs text-zinc-600">Flex ret:</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={ex.flexibility_hours_return ?? 0}
+                        onChange={(e) =>
+                          updateEx(
+                            "flexibility_hours_return",
+                            parseInt(e.target.value) || 0,
+                          )
+                        }
+                        className="w-12 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-300"
+                      />
+                      <span className="text-xs text-zinc-600">hrs</span>
+                    </>
+                  )}
                 </div>
               </div>
 

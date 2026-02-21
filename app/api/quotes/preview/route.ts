@@ -139,7 +139,7 @@ export async function POST(request: Request) {
   const plans: Record<string, RoutePlanResult & { plan_id: string }> = {};
   for (let i = 0; i < modes.length; i++) {
     const r = results[i];
-    const mode = modes[i];
+    const mode = modes[i]!;
     if (r?.status === "fulfilled") {
       const result = r.value;
       // 5. Persist to route_plans (quote_id=null)
@@ -148,7 +148,7 @@ export async function POST(request: Request) {
         .insert({
           quote_id: null,
           trip_id: tripId,
-          aircraft_id: bestAircraftId,
+          aircraft_id: bestAircraftId!,
           optimization_mode: mode,
           route_legs: result.route_legs as unknown as Json,
           refuel_stops: result.refuel_stops as unknown as Json,

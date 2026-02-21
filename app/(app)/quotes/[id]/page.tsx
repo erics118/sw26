@@ -19,6 +19,10 @@ type QuoteDetail = {
   currency: string;
   margin_pct: number;
   broker_name: string | null;
+  broker_commission_pct: number | null;
+  quote_valid_until: string | null;
+  estimated_total_hours: number | null;
+  won_lost_reason: string | null;
   created_at: string;
   trip_id: string;
   notes: string | null;
@@ -42,6 +46,8 @@ type QuoteDetail = {
     }>;
     trip_type: string;
     pax_adults: number;
+    flexibility_hours?: number;
+    flexibility_hours_return?: number;
   } | null;
   quote_costs: Array<{
     fuel_cost: number;
@@ -515,6 +521,17 @@ export default async function QuoteDetailPage({ params }: PageProps) {
             <Card>
               <CardHeader>
                 <CardTitle>Legs</CardTitle>
+                {(trip?.flexibility_hours ?? 0) > 0 ||
+                (trip?.flexibility_hours_return ?? 0) > 0 ? (
+                  <span className="text-xs text-zinc-500">
+                    Flex: dep ±{trip?.flexibility_hours ?? 0}h
+                    {["round_trip", "multi_leg"].includes(
+                      trip?.trip_type ?? "",
+                    ) && (trip?.flexibility_hours_return ?? 0) > 0
+                      ? `, ret ±${trip?.flexibility_hours_return ?? 0}h`
+                      : ""}
+                  </span>
+                ) : null}
               </CardHeader>
               <div className="space-y-2">
                 {legs.map((leg, i) => (
@@ -604,6 +621,38 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                 <div className="flex justify-between">
                   <span className="text-zinc-600">Broker</span>
                   <span className="text-zinc-300">{quote.broker_name}</span>
+                </div>
+              )}
+              {quote.broker_commission_pct != null && (
+                <div className="flex justify-between">
+                  <span className="text-zinc-600">Broker commission</span>
+                  <span className="tabnum text-zinc-300">
+                    {quote.broker_commission_pct}%
+                  </span>
+                </div>
+              )}
+              {quote.quote_valid_until && (
+                <div className="flex justify-between">
+                  <span className="text-zinc-600">Valid until</span>
+                  <span className="text-xs text-zinc-500">
+                    {new Date(quote.quote_valid_until).toLocaleDateString()}
+                  </span>
+                </div>
+              )}
+              {quote.estimated_total_hours != null && (
+                <div className="flex justify-between">
+                  <span className="text-zinc-600">Est. total hours</span>
+                  <span className="tabnum text-zinc-300">
+                    {quote.estimated_total_hours} hrs
+                  </span>
+                </div>
+              )}
+              {quote.won_lost_reason && quote.status === "lost" && (
+                <div className="flex justify-between">
+                  <span className="text-zinc-600">Lost reason</span>
+                  <span className="text-zinc-300 capitalize">
+                    {quote.won_lost_reason.replace("_", " ")}
+                  </span>
                 </div>
               )}
               <div className="flex justify-between">
