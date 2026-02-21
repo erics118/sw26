@@ -196,8 +196,8 @@ export default function FlightMap({
     null,
   );
 
-  const airborneFlights = useMemo(
-    () => flights.filter((f) => f.inAir),
+  const displayedFlights = useMemo(
+    () => flights, // Show all aircraft (both airborne and grounded)
     [flights],
   );
   const selectedFlight = useMemo(
@@ -276,6 +276,13 @@ export default function FlightMap({
       <MapContainer
         center={[38, -96]}
         zoom={5}
+        minZoom={3}
+        maxZoom={11}
+        worldCopyJump={false}
+        maxBounds={[
+          [-85, -180],
+          [85, 180],
+        ]}
         className="h-full w-full"
         zoomControl={true}
         style={{ background: "hsl(222 30% 5%)" }}
@@ -294,7 +301,7 @@ export default function FlightMap({
         />
 
         <AircraftMarkers
-          flights={airborneFlights}
+          flights={displayedFlights}
           selectedId={selectedId}
           onSelect={handleSelect}
           onHover={handleHover}
