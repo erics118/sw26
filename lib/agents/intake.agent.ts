@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { createDatabaseTools } from "./tools/database";
-import { runAgent } from ".";
+import { extractTripFromText } from "@/lib/ai/intake";
+import type { Json } from "@/lib/database.types";
 
 export interface IntakeAgentResult {
   trip_id: string;
@@ -14,71 +14,117 @@ export interface IntakeAgentResult {
   };
 }
 
+const ICAO_REGEX = /^[A-Z]{4}$/i;
+
+async function resolveIcao(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  value: string,
+): Promise<string> {
+  const v = value.trim().toUpperCase();
+  if (ICAO_REGEX.test(v)) return v;
+  const safe = v.replace(/'/g, "''");
+  const { data } = await supabase
+    .from("airports")
+    .select("icao")
+    .or(
+      `city.ilike.%${safe}%,name.ilike.%${safe}%,icao.ilike.%${safe}%,iata.ilike.%${safe}%`,
+    )
+    .limit(1)
+    .maybeSingle();
+  return (data as { icao: string } | null)?.icao ?? v;
+}
+
 export async function runIntakeAgent(
   rawText: string,
   clientId?: string,
 ): Promise<IntakeAgentResult> {
   const supabase = await createClient();
-  const dbTools = createDatabaseTools(supabase);
 
-  const prompt = `You are an expert aviation charter coordinator. Process this incoming charter request.
+  // 1. Extract (single LLM call, no tools)
+  const extracted = await extractTripFromText(rawText);
 
-STEPS:
-1. Extract all trip details from the raw text (legs, passengers, requirements, preferences).
-2. If client contact info is found (name, email, phone, company), call search_clients to find a matching existing client.
-3. Call save_trip with ALL extracted fields including confidence scores and any client contact info.
-   - confidence: per-field scores (1.0 = explicit in text, 0.5–0.8 = inferred, omit if defaulted)
-   - client_name/email/phone/company: include if found in the text
-4. If an airport code is unclear, use WebFetch to look up the correct ICAO code.
+  // 2. Resolve airport codes (server-side)
+  const legs = await Promise.all(
+    extracted.legs.map(async (leg) => ({
+      from_icao: await resolveIcao(supabase, leg.from_icao),
+      to_icao: await resolveIcao(supabase, leg.to_icao),
+      date: leg.date,
+      time: leg.time,
+    })),
+  );
 
-EXTRACTION RULES:
-- Airport codes: always 4-letter ICAO (e.g. KLAX, EGLL). Infer from city name if needed.
-- Dates: ISO YYYY-MM-DD. Times: HH:MM in 24h local time.
-- trip_type: "round_trip" if a return is mentioned, "multi_leg" if 3+ airports, else "one_way".
-- pax_adults: minimum 1. pax_children and pax_pets default to 0.
-- wifi_required / bathroom_required: boolean, default false.
-- flexibility_hours: 0 if not mentioned.
-${clientId ? `\nCLIENT ALREADY KNOWN: Use client_id = ${clientId} in save_trip.` : ""}
-
-After calling save_trip, output ONLY this JSON (no markdown, no other text):
-{
-  "trip_id": "<id from save_trip result>",
-  "extracted": {
-    "legs": [...],
-    "trip_type": "...",
-    "pax_adults": 0,
-    "pax_children": 0,
-    "pax_pets": 0,
-    "flexibility_hours": 0,
-    "special_needs": null,
-    "catering_notes": null,
-    "luggage_notes": null,
-    "preferred_category": null,
-    "min_cabin_height_in": null,
-    "wifi_required": false,
-    "bathroom_required": false,
-    "client_name": null,
-    "client_email": null,
-    "client_phone": null,
-    "client_company": null
-  },
-  "confidence": { "<field>": 0.0 },
-  "client_hint": {
-    "name": null,
-    "email": null,
-    "phone": null,
-    "company": null
+  // 3. Search for matching client
+  let matchedClientId: string | null = clientId ?? null;
+  if (
+    !matchedClientId &&
+    (extracted.client_name || extracted.client_email || extracted.client_phone)
+  ) {
+    let q = supabase.from("clients").select("id").limit(1);
+    if (extracted.client_email)
+      q = q.ilike("email", `%${extracted.client_email}%`);
+    else if (extracted.client_phone)
+      q = q.ilike("phone", `%${extracted.client_phone}%`);
+    else if (extracted.client_name)
+      q = q.ilike("name", `%${extracted.client_name}%`);
+    const { data: clients } = await q;
+    matchedClientId = (clients as { id: string }[])?.[0]?.id ?? null;
   }
-}
 
-RAW TEXT:
-${rawText}`;
+  // 4. Save trip
+  const { data: trip, error } = await supabase
+    .from("trips")
+    .insert({
+      raw_input: rawText,
+      client_id: matchedClientId,
+      legs: legs as unknown as Json,
+      trip_type: extracted.trip_type,
+      pax_adults: extracted.pax_adults,
+      pax_children: extracted.pax_children ?? 0,
+      pax_pets: extracted.pax_pets ?? 0,
+      flexibility_hours: extracted.flexibility_hours ?? 0,
+      special_needs: extracted.special_needs ?? null,
+      catering_notes: extracted.catering_notes ?? null,
+      luggage_notes: extracted.luggage_notes ?? null,
+      preferred_category: extracted.preferred_category ?? null,
+      min_cabin_height_in: extracted.min_cabin_height_in ?? null,
+      wifi_required: extracted.wifi_required ?? false,
+      bathroom_required: extracted.bathroom_required ?? false,
+      ai_extracted: true,
+      ai_confidence: (extracted.confidence ?? {}) as unknown as Json,
+    })
+    .select("id")
+    .single();
 
-  return runAgent<IntakeAgentResult>({
-    serverName: "aviation_intake",
-    dbTools,
-    prompt,
-    builtinTools: ["WebFetch"],
-    maxTurns: 10,
-  });
+  if (error) throw new Error(`Failed to save trip: ${error.message}`);
+  if (!trip) throw new Error("No trip returned");
+
+  return {
+    trip_id: trip.id,
+    extracted: {
+      legs,
+      trip_type: extracted.trip_type,
+      pax_adults: extracted.pax_adults,
+      pax_children: extracted.pax_children,
+      pax_pets: extracted.pax_pets,
+      flexibility_hours: extracted.flexibility_hours,
+      special_needs: extracted.special_needs,
+      catering_notes: extracted.catering_notes,
+      luggage_notes: extracted.luggage_notes,
+      preferred_category: extracted.preferred_category,
+      min_cabin_height_in: extracted.min_cabin_height_in,
+      wifi_required: extracted.wifi_required,
+      bathroom_required: extracted.bathroom_required,
+      client_name: extracted.client_name,
+      client_email: extracted.client_email,
+      client_phone: extracted.client_phone,
+      client_company: extracted.client_company,
+    },
+    confidence: extracted.confidence ?? {},
+    client_hint: {
+      name: extracted.client_name ?? null,
+      email: extracted.client_email ?? null,
+      phone: extracted.client_phone ?? null,
+      company: extracted.client_company ?? null,
+    },
+  };
 }

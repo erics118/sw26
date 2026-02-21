@@ -13,6 +13,8 @@ Private aviation charter platform for managing clients, aircraft, quotes, trip i
 | AI         | Anthropic SDK + Claude Agent SDK           |
 | Language   | TypeScript (strict)                        |
 
+Auth redirects and session refresh are handled by **`proxy.ts`** (Next.js 16 proxy convention), not `middleware.ts`. Geo: **`lib/geo.ts`** exports `distanceNm` (great-circle distance; 500 nm fallback for unknown ICAOs). **`lib/routing/airport-db.ts`** provides `haversineNm` and airport lookups for routing.
+
 ## Documentation index
 
 ### Application features
@@ -51,15 +53,18 @@ Private aviation charter platform for managing clients, aircraft, quotes, trip i
 ## Quick start
 
 ```bash
-npm run dev    # Start dev server
-npm run build  # Production build
-npm run lint   # ESLint
-npm run format # Prettier
+npm run dev      # Start dev server
+npm run build    # Production build
+npm run lint     # ESLint
+npm run format   # Prettier
+npm run test     # Vitest
+npm run db:reset # Reset DB and seed (requires DATABASE_URL)
 ```
 
 ## Environment variables
 
-- `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Supabase anonymous key
+- **`NEXT_PUBLIC_SUPABASE_URL`** — Supabase project URL
+- **`NEXT_PUBLIC_SUPABASE_ANON_KEY`** — Supabase anonymous key
+- **`DATABASE_URL`** — Direct Postgres URL (port 5432) for `npm run db:reset`; optional for normal app run
 
-See [Authentication](features/authentication.md) for auth behavior.
+See [Authentication](features/authentication.md) for auth (enforced via `proxy.ts`). See [Database and schema](features/database-and-schema.md#database-reset-and-seed) for reset and seed.

@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     action: "trip.ai_intake",
     entityType: "trips",
     entityId: result.trip_id,
-    model: "claude-sonnet-4-6",
+    model: "claude-haiku-4-5-20251001",
     payload: {
       raw_text_length: raw_text.length,
       extracted: result.extracted,

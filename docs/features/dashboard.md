@@ -26,8 +26,8 @@ Three summary metrics:
 
 ### 3. Live Operations
 
-- Renders the **OpsCenter** component (`components/ops/OpsCenter`).
-- Intended for a live view of current operations (mock or real data from `lib/ops/`).
+- Renders the **OpsCenter** component (`components/ops/OpsCenter`), which may use **FlightMap** and **FlightDetailDrawer** (`components/ops/`) for map and flight details.
+- Data comes from `lib/ops/` (mock data and types: `Flight`, `Alert`).
 
 ### 4. Recent Quotes table
 

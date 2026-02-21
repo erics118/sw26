@@ -42,3 +42,10 @@ Supabase (PostgreSQL) stores all application data. Row Level Security (RLS) is e
 ## Validation (Zod)
 
 Application-side validation uses schemas in `lib/schemas/index.ts`: ClientSchema, AircraftSchema, CrewSchema, TripLegSchema/TripSchema, CreateQuoteSchema, IntakeRequestSchema, RoutingPlanRequestSchema, etc. Types are exported for use in API routes and agents. See also `lib/database.types.ts` for generated Supabase types.
+
+---
+
+## Database reset and seed
+
+- **Reset script:** `npm run db:reset` runs `scripts/reset-db.ts`, which executes `supabase/reset.sql` (schema + RLS) then `supabase/seed_comprehensive_testing.sql` (test data).
+- **Requires:** `DATABASE_URL` set to the Supabase **direct** Postgres connection (port 5432, not 6543), e.g. `postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres`. Can be set in `.env.local` or inline when running the command.

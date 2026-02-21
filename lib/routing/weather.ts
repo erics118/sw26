@@ -15,8 +15,14 @@ const FETCH_TIMEOUT_MS = 6000;
 
 // ─── Raw API shapes (partial) ─────────────────────────────────────────────────
 
+interface RawMetarCloud {
+  cover?: string;
+  base?: number;
+}
+
 interface RawMetar {
-  stationId?: string;
+  stationId?: string; // legacy
+  icaoId?: string; // current API (2025+)
   rawOb?: string;
   temp?: number;
   dewp?: number;
@@ -27,6 +33,8 @@ interface RawMetar {
   altim?: number;
   wxString?: string;
   cover?: string;
+  clouds?: RawMetarCloud[];
+  // legacy flat cloud fields (pre-2025 API)
   cldCvg1?: string;
   cldBas1?: number;
   cldCvg2?: string;
@@ -36,7 +44,8 @@ interface RawMetar {
 }
 
 interface RawTaf {
-  stationId?: string;
+  stationId?: string; // legacy
+  icaoId?: string; // current API (2025+)
   rawTAF?: string;
 }
 
@@ -68,7 +77,8 @@ export async function fetchMetars(
   const result = new Map<string, RawMetar>();
   if (!data) return result;
   for (const metar of data) {
-    if (metar.stationId) result.set(metar.stationId, metar);
+    const id = metar.icaoId ?? metar.stationId;
+    if (id) result.set(id, metar);
   }
   return result;
 }
@@ -83,7 +93,8 @@ export async function fetchTafs(icaos: string[]): Promise<Map<string, RawTaf>> {
   const result = new Map<string, RawTaf>();
   if (!data) return result;
   for (const taf of data) {
-    if (taf.stationId) result.set(taf.stationId, taf);
+    const id = taf.icaoId ?? taf.stationId;
+    if (id) result.set(id, taf);
   }
   return result;
 }
@@ -91,7 +102,19 @@ export async function fetchTafs(icaos: string[]): Promise<Map<string, RawTaf>> {
 // ─── Ceiling extraction ───────────────────────────────────────────────────────
 
 function extractCeilingFt(metar: RawMetar): number | null {
-  // Check cloud layers in order: BKN or OVC = ceiling
+  // Prefer clouds array (2025+ API); fallback to legacy cldCvg/cldBas
+  const clouds = metar.clouds;
+  if (clouds?.length) {
+    for (const c of clouds) {
+      if (
+        c.cover &&
+        (c.cover === "BKN" || c.cover === "OVC") &&
+        c.base !== undefined
+      ) {
+        return c.base; // base is already in feet
+      }
+    }
+  }
   const layers: Array<{ cvg: string | undefined; bas: number | undefined }> = [
     { cvg: metar.cldCvg1, bas: metar.cldBas1 },
     { cvg: metar.cldCvg2, bas: metar.cldBas2 },
@@ -103,7 +126,7 @@ function extractCeilingFt(metar: RawMetar): number | null {
       (layer.cvg === "BKN" || layer.cvg === "OVC") &&
       layer.bas !== undefined
     ) {
-      return layer.bas * 100; // AGL in hundreds of feet
+      return layer.bas * 100; // AGL in hundreds of feet (legacy)
     }
   }
   return null;

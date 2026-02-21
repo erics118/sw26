@@ -2,10 +2,13 @@
 
 The routing module computes a **full route plan** for a given aircraft and trip legs: optimized route (including fuel stops), weather summaries, NOTAM alerts, risk score, and on-time probability. It is used when creating or viewing a quote.
 
+**AI-driven:** The quote agent automatically calls `compute_route_plan` and `save_route_plan` when building quotes — no manual routing step required. The New Quote page also auto-runs route planning when trip + aircraft are selected (for preview).
+
 ## Entry point
 
 - **`computeRoutePlan(input: RoutingInput): Promise<RoutePlanResult>`** in `lib/routing/index.ts`.
 - **API:** `POST /api/routing/plan` — accepts `aircraft_id`, `legs`, `optimization_mode`; optionally `quote_id` and `trip_id` to persist the plan.
+- **Agent tools:** `compute_route_plan`, `save_route_plan` in `lib/agents/tools/database.ts` — used by the quote agent.
 
 ---
 
@@ -65,6 +68,7 @@ The routing module computes a **full route plan** for a given aircraft and trip 
 
 ## Related
 
-- [Quotes (New quote)](quotes.md#new-quote) — calls route plan and optionally saves with quote
-- [Pricing](pricing.md) — quote pricing can use avg fuel price from route plan as override
+- [AI Agents](agents.md) — quote agent uses compute_route_plan and save_route_plan
+- [Quotes (New quote)](quotes.md#new-quote) — auto-runs route plan on selection; agent persists on save
+- [Pricing](pricing.md) — quote pricing uses avg fuel price from route plan
 - [Aircraft](aircraft.md) — performance fields used by routing

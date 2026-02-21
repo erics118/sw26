@@ -13,7 +13,7 @@ The **New Intake** flow lets staff paste raw text (e.g. email or call notes); an
 2. **Click** "✈ Extract with AI" → `POST /api/intake` with `{ raw_text, client_id? }`.
 3. **Review** extracted fields on the right: route (legs), passengers, aircraft preferences, client (from text), notes. Each field can show a **confidence chip** (from AI).
 4. **Edit** any field (legs, trip type, flexibility, pax, category, cabin height, wifi/bathroom, client name/email/phone/company, catering/luggage/special needs).
-5. **Click** "Save Trip & Build Quote →" → navigates to `/quotes/new?trip_id=<id>` (trip is already saved by the API).
+5. **Click** "Save Trip & Build Quote →" → navigates to `/quotes/new?trip_id=<id>`. The quote is **auto-generated** by the AI agent (best aircraft + route plan); user is redirected to the quote detail page. If generation fails, the manual form is shown.
 
 ## Extracted data (AI output)
 
@@ -27,6 +27,8 @@ The intake agent returns and the UI displays:
 | **Client (from text)**   | `client_name`, `client_email`, `client_phone`, `client_company` (returned as client_hint; not stored on trip).                  |
 | **Notes**                | `catering_notes`, `luggage_notes`, `special_needs`.                                                                             |
 
+---
+
 - **Confidence:** Optional per-field scores (0–1) in `confidence`; the UI shows `ConfidenceChip` where available.
 - **Sample:** The sample text includes LAX→JFK, round trip, 4 pax, midsize, wifi, luggage, catering, contact details.
 
@@ -34,9 +36,8 @@ The intake agent returns and the UI displays:
 
 - **Body:** `{ raw_text: string, client_id?: string }`. Validated with `IntakeRequestSchema` (Zod).
 - **Process:** Calls `runIntakeAgent(raw_text, client_id)` which:
-  - Uses Claude Agent SDK with database tools: `search_clients`, `save_trip`, `get_trip`, and optionally **WebFetch** for airport code lookups.
-  - Extracts trip + client_hint; saves trip with `ai_extracted: true` and `ai_confidence`.
-- **Audit:** Writes to `audit_logs` with action `trip.ai_intake`, model `claude-sonnet-4-6`, and payload (raw_text_length, extracted, confidence).
+  - Uses a **single LLM call** for extraction (no agent loop). Server resolves airports via DB, searches clients, saves trip with `ai_extracted: true` and `ai_confidence`.
+- **Audit:** Writes to `audit_logs` with action `trip.ai_intake`, model `claude-haiku-4-5-20251001`, and payload (raw_text_length, extracted, confidence).
 - **Response:** `201` with `{ trip_id, extracted, confidence, client_hint }`. On validation or agent failure, returns `400` or `502` with `error`.
 
 ## Implementation notes
@@ -47,5 +48,5 @@ The intake agent returns and the UI displays:
 
 ## Related
 
-- [Quotes (New)](quotes.md#new-quote) — next step: select trip and aircraft, plan route, save quote
-- [AI Agents](agents.md) — intake agent, tools, WebFetch
+- [Quotes (New)](quotes.md#new-quote) — auto-generates when `?trip_id=` is present; otherwise manual select + save
+- [AI Agents](agents.md) — intake (extraction only), quote agent

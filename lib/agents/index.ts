@@ -11,10 +11,14 @@ export interface AgentRunOptions {
   dbTools: DatabaseTools;
   /** Prompt text for the agent */
   prompt: string;
+  /** Model override (default: claude-sonnet-4-6). Use claude-3-5-haiku-latest for faster intake. */
+  model?: string;
   /** Built-in Claude Code tools to enable (e.g. ["WebSearch", "WebFetch"]) */
   builtinTools?: string[];
   /** Max agent turns before stopping (default: 15) */
   maxTurns?: number;
+  /** Effort level: 'low' = faster, less reasoning; 'high' = default */
+  effort?: "low" | "medium" | "high" | "max";
 }
 
 /**
@@ -28,8 +32,10 @@ export async function runAgent<T>(options: AgentRunOptions): Promise<T> {
     serverName,
     dbTools,
     prompt,
+    model = MODEL,
     builtinTools = [],
     maxTurns = 15,
+    effort,
   } = options;
 
   const mcpServer = createSdkMcpServer({
@@ -42,12 +48,13 @@ export async function runAgent<T>(options: AgentRunOptions): Promise<T> {
   for await (const message of query({
     prompt,
     options: {
-      model: MODEL,
+      model,
       tools: builtinTools,
       mcpServers: { [serverName]: mcpServer },
       permissionMode: "bypassPermissions",
       allowDangerouslySkipPermissions: true,
       maxTurns,
+      ...(effort && { effort }),
     },
   })) {
     if (message.type === "result" && message.subtype === "success") {

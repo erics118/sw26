@@ -86,6 +86,11 @@ export async function POST(request: Request) {
       margin_amount: result.costs.margin_amount,
       tax: result.costs.tax,
       total: result.costs.total,
+      ...(result.selection_reasoning && {
+        aircraft_explanation: result.selection_reasoning.aircraft_explanation,
+        route_explanation: result.selection_reasoning.route_explanation,
+        optimization_mode: result.selection_reasoning.optimization_mode,
+      }),
     },
   });
 

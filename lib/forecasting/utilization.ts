@@ -70,12 +70,18 @@ export async function computeUtilization(
         scheduledDates: new Set(),
       };
     }
-    const blockHours = q.actual_block_hours ?? q.actual_total_hours ?? 0;
+    // actual_total_hours = block + reposition; avoid double-counting when block is null
+    const blockHours = q.actual_block_hours ?? 0;
     const repoHours = q.actual_reposition_hours ?? 0;
+    const totalHours =
+      blockHours > 0 || repoHours > 0
+        ? blockHours + repoHours
+        : (q.actual_total_hours ?? 0);
     const stat = acStats[q.aircraft_id];
     if (stat) {
-      stat.paidHours += Number(blockHours);
-      stat.repoHours += Number(repoHours);
+      stat.paidHours +=
+        blockHours > 0 ? blockHours : Math.max(0, totalHours - repoHours);
+      stat.repoHours += repoHours;
       if (q.actual_departure_time) {
         stat.scheduledDates.add(q.actual_departure_time.slice(0, 10));
       }
@@ -107,7 +113,7 @@ export async function computeUtilization(
       repoHours: 0,
       scheduledDates: new Set<string>(),
     };
-    const dailyHours = Number(ac.daily_available_hours ?? 24);
+    const dailyHours = Number(ac.daily_available_hours ?? 8);
     const availableHours = dailyHours * totalDays;
     const totalUsed = stats.paidHours + stats.repoHours;
     const utilizationRate = availableHours > 0 ? totalUsed / availableHours : 0;

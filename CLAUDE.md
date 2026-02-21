@@ -46,15 +46,16 @@ app/
     fleet-forecasting/  # forecast, insights, maintenance, overrides, recommendations, utilization
 
 lib/
-  agents/            # Claude Agent SDK orchestration
+  agents/            # Claude Agent SDK (quote only)
     index.ts         # runAgent() helper
-    intake.agent.ts  # Trip extraction (WebFetch enabled)
-    quote.agent.ts   # Quote generation
+    intake.agent.ts  # Intake orchestration (extraction + server-side lookup/save)
+    quote.agent.ts   # Quote generation (agent with tools)
     tools/
-      database.ts    # All MCP tool definitions (createDatabaseTools)
+      database.ts    # MCP tools: search_clients, save_trip, get_trip, lookup_airport, list_aircraft, compute_route_plan, save_route_plan, calculate_pricing, save_quote
   ai/                # Direct Claude helpers
     audit.ts         # Audit log writer
     forecasting.ts   # Fleet forecasting AI
+    intake.ts        # extractTripFromText() — single LLM call, no agent
   forecasting/       # Fleet forecasting logic (capacity, demand, utilization, etc.)
   pricing/
     engine.ts        # Deterministic pricing engine
@@ -64,7 +65,7 @@ lib/
     client.ts        # Browser client
     server.ts        # SSR/RSC client
   database.types.ts  # Generated Supabase types
-  geo.ts             # Geo utilities (haversineNm, distanceNm)
+  geo.ts             # Geo utilities (distanceNm; haversineNm in lib/routing/airport-db.ts)
   ops/               # Mock data + types for ops views
 
 components/
@@ -80,17 +81,24 @@ Supabase auth managed via `proxy.ts` (Next.js 16 proxy convention):
 - Unauthenticated requests to protected routes redirect to `/login`
 - Authenticated users hitting `/login` redirect to `/dashboard`
 
-## Agents (Claude Agent SDK)
+## AI: Intake vs Quote
+
+**Intake** (extraction only, no agent):
+
+- `lib/ai/intake.ts` — `extractTripFromText(rawText)` — single Messages API call, returns structured JSON
+- `lib/agents/intake.agent.ts` — orchestrates: extract → resolve airports (DB) → search clients → save trip
+- No agent loop, no tools. Fast.
+
+**Quote** (Claude Agent SDK):
 
 - `lib/agents/index.ts` — `runAgent<T>()` shared runner, uses `bypassPermissions`
-- `lib/agents/tools/database.ts` — `createDatabaseTools(supabase)` — MCP tools: `search_clients`, `save_trip`, `get_trip`, `list_aircraft`, `list_crew`, `calculate_pricing`, `save_quote`
-- `lib/agents/intake.agent.ts` — extracts trip from free text, WebFetch enabled
-- `lib/agents/quote.agent.ts` — builds and saves quotes, no builtin tools
+- `lib/agents/tools/database.ts` — `createDatabaseTools(supabase)` — MCP tools: `search_clients`, `save_trip`, `get_trip`, `lookup_airport`, `list_aircraft`, `list_crew`, `compute_route_plan`, `save_route_plan`, `calculate_pricing`, `save_quote`
+- `lib/agents/quote.agent.ts` — builds quotes; selects best aircraft and route plan (cost/balanced/time); uses database tools only
 
 Agent notes:
 
 - `permissionMode: "bypassPermissions"` requires `allowDangerouslySkipPermissions: true`
-- Pass `tools: []` to disable all builtin tools; pass `["WebFetch"]` etc. to selectively enable
+- Pass `builtinTools: []` to disable WebFetch etc.
 - JSON extraction uses `{` / `}` position search (not anchored regex)
 
 ## Env Variables
@@ -98,6 +106,7 @@ Agent notes:
 ```
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
+ANTHROPIC_API_KEY   # For Messages API (intake, forecasting) and Agent SDK (quote)
 ```
 
 ## Using Nia (External Docs & Research)
