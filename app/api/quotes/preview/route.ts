@@ -52,33 +52,76 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Trip has no legs" }, { status: 400 });
   }
 
-  // 2. List aircraft with filters
-  const minRangeNm = 500 * legs.length;
-  let aircraftQuery = supabase
-    .from("aircraft")
-    .select(
-      "id, tail_number, category, range_nm, pax_capacity, fuel_burn_gph, home_base_icao",
-    )
-    .eq("status", "active")
-    .gte("range_nm", minRangeNm)
-    .gte("pax_capacity", t.pax_adults ?? 1)
-    .order("range_nm", { ascending: false })
-    .limit(10);
+  // 2. List aircraft with cascading filters (soft constraints fall back gracefully)
+  const baseQuery = () =>
+    supabase
+      .from("aircraft")
+      .select(
+        "id, tail_number, category, range_nm, pax_capacity, fuel_burn_gph, home_base_icao",
+      )
+      .eq("status", "active")
+      .gte("range_nm", 500) // per-leg minimum; router handles fuel stops
+      .gte("pax_capacity", t.pax_adults ?? 1)
+      .order("range_nm", { ascending: false })
+      .limit(10);
 
-  if (t.wifi_required) {
-    aircraftQuery = aircraftQuery.eq("has_wifi", true);
-  }
-  if (t.bathroom_required) {
-    aircraftQuery = aircraftQuery.eq("has_bathroom", true);
-  }
-  if (t.preferred_category) {
-    aircraftQuery = aircraftQuery.eq("category", t.preferred_category);
+  const warnings: string[] = [];
+
+  // Attempt 1: strict — category + amenities
+  let q = baseQuery();
+  if (t.preferred_category) q = q.eq("category", t.preferred_category);
+  if (t.wifi_required) q = q.eq("has_wifi", true);
+  if (t.bathroom_required) q = q.eq("has_bathroom", true);
+  let { data: aircraftList, error: aircraftErr } = await q;
+
+  // Fallback 1: drop category (it's a preference, not a requirement)
+  if ((aircraftErr || !aircraftList?.length) && t.preferred_category) {
+    q = baseQuery();
+    if (t.wifi_required) q = q.eq("has_wifi", true);
+    if (t.bathroom_required) q = q.eq("has_bathroom", true);
+    ({ data: aircraftList, error: aircraftErr } = await q);
+    if (aircraftList?.length) {
+      warnings.push(
+        `No ${t.preferred_category} aircraft available — showing all categories`,
+      );
+    }
   }
 
-  const { data: aircraftList, error: aircraftErr } = await aircraftQuery;
+  // Fallback 2: drop amenity requirements
+  if (
+    (aircraftErr || !aircraftList?.length) &&
+    (t.wifi_required || t.bathroom_required)
+  ) {
+    ({ data: aircraftList, error: aircraftErr } = await baseQuery());
+    if (aircraftList?.length) {
+      const missing = [
+        t.wifi_required && "wifi",
+        t.bathroom_required && "bathroom",
+      ]
+        .filter(Boolean)
+        .join(" and ");
+      warnings.push(
+        `No aircraft with ${missing} available — showing all active aircraft`,
+      );
+    }
+  }
+
   if (aircraftErr || !aircraftList?.length) {
+    // Give a specific reason if possible
+    const { count } = await supabase
+      .from("aircraft")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "active");
+    if (!count) {
+      return NextResponse.json(
+        { error: "No active aircraft in fleet" },
+        { status: 404 },
+      );
+    }
     return NextResponse.json(
-      { error: "No eligible aircraft found for this trip" },
+      {
+        error: `No aircraft can carry ${t.pax_adults ?? 1} passenger(s) with sufficient range`,
+      },
       { status: 404 },
     );
   }
@@ -212,5 +255,6 @@ export async function POST(request: Request) {
     balanced: plans.balanced ?? null,
     time: plans.time ?? null,
     recommendation,
+    warnings: warnings.length > 0 ? warnings : undefined,
   });
 }

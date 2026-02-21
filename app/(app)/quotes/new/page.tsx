@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
@@ -8,6 +8,11 @@ import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { formatFlightTime } from "@/lib/format";
 import Link from "next/link";
+import RoutePlanDetail from "@/components/Quotes/RoutePlanDetail";
+import {
+  useRoutePlanning,
+  type RoutePlanResult,
+} from "./hooks/useRoutePlanning";
 
 interface TripLeg {
   from_icao: string;
@@ -34,70 +39,6 @@ interface Aircraft {
   has_bathroom: boolean;
 }
 
-interface RouteLeg {
-  from_icao: string;
-  to_icao: string;
-  distance_nm: number;
-  flight_time_hr: number;
-  fuel_burn_gal: number;
-  fuel_cost_usd: number;
-  is_fuel_stop_leg: boolean;
-}
-
-interface RefuelStop {
-  icao: string;
-  airport_name: string;
-  added_distance_nm: number;
-  fuel_price_usd_gal: number;
-  fuel_uplift_gal: number;
-  fuel_cost_usd: number;
-  fbo_fee_usd: number;
-  ground_time_min: number;
-  customs: boolean;
-  deicing: boolean;
-  reason: string;
-}
-
-interface WeatherSummary {
-  icao: string;
-  go_nogo: "go" | "marginal" | "nogo";
-  ceiling_ft: number | null;
-  visibility_sm: number | null;
-  wind_speed_kts: number | null;
-  icing_risk: string;
-  convective_risk: string;
-}
-
-interface NotamAlert {
-  notam_id: string;
-  icao: string;
-  type: string;
-  severity: "info" | "caution" | "critical";
-  raw_text: string;
-}
-
-interface CostBreakdownResult {
-  fuel_cost_usd: number;
-  fbo_fees_usd: number;
-  refuel_stop_detour_cost_usd: number;
-  avg_fuel_price_usd_gal: number;
-  total_routing_cost_usd: number;
-}
-
-interface RoutePlanResult {
-  plan_id?: string;
-  route_legs: RouteLeg[];
-  refuel_stops: RefuelStop[];
-  total_distance_nm: number;
-  total_flight_time_hr: number;
-  total_fuel_cost_usd: number;
-  weather_summary: WeatherSummary[];
-  notam_alerts: NotamAlert[];
-  risk_score: number;
-  on_time_probability: number;
-  cost_breakdown: CostBreakdownResult;
-}
-
 type OptimizationMode = "cost" | "time" | "balanced";
 
 interface PreviewResult {
@@ -117,119 +58,7 @@ interface PreviewResult {
     explanation: string;
     comparisons: Record<OptimizationMode, string>;
   };
-}
-
-function RoutePlanDetail({ plan }: { plan: RoutePlanResult }) {
-  return (
-    <div className="space-y-4">
-      <div className="space-y-1">
-        {plan.route_legs.map((leg, i) => (
-          <div
-            key={i}
-            className="flex items-center gap-3 rounded bg-zinc-800/40 px-3 py-2 text-sm"
-          >
-            <span className="font-mono text-amber-400">{leg.from_icao}</span>
-            <span className="text-zinc-700">→</span>
-            <span className="font-mono text-amber-400">{leg.to_icao}</span>
-            {leg.is_fuel_stop_leg && (
-              <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-xs text-blue-400">
-                fuel stop
-              </span>
-            )}
-            <span className="tabnum ml-auto text-xs text-zinc-500">
-              {leg.distance_nm} nm · {formatFlightTime(leg.flight_time_hr)}
-            </span>
-          </div>
-        ))}
-      </div>
-      {plan.refuel_stops.length > 0 && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-zinc-500">
-            Refuel Stops
-          </p>
-          <div className="space-y-1.5">
-            {plan.refuel_stops.map((stop, i) => (
-              <div
-                key={i}
-                className="rounded border border-zinc-800 px-3 py-2 text-xs"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono font-semibold text-zinc-200">
-                    {stop.icao}
-                  </span>
-                  <span className="text-zinc-500">{stop.airport_name}</span>
-                </div>
-                <div className="mt-1 flex flex-wrap gap-3 text-zinc-600">
-                  <span>${stop.fuel_price_usd_gal.toFixed(2)}/gal</span>
-                  <span>{stop.fuel_uplift_gal} gal</span>
-                  <span>${stop.fbo_fee_usd} FBO</span>
-                  <span>{stop.ground_time_min} min ground</span>
-                  {stop.customs && (
-                    <span className="text-emerald-600">customs</span>
-                  )}
-                  {stop.deicing && (
-                    <span className="text-blue-600">deicing</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {plan.weather_summary.length > 0 && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-zinc-500">Weather</p>
-          <div className="flex flex-wrap gap-2">
-            {plan.weather_summary.map((w) => (
-              <div
-                key={w.icao}
-                className="flex items-center gap-1.5 rounded bg-zinc-800/40 px-2 py-1 text-xs"
-              >
-                <span className="font-mono text-zinc-400">{w.icao}</span>
-                <span
-                  className={`rounded px-1 py-0.5 text-xs font-medium ${
-                    w.go_nogo === "go"
-                      ? "bg-emerald-500/10 text-emerald-400"
-                      : w.go_nogo === "marginal"
-                        ? "bg-amber-500/10 text-amber-400"
-                        : "bg-red-500/10 text-red-400"
-                  }`}
-                >
-                  {w.go_nogo}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {plan.notam_alerts.filter((n) => n.severity !== "info").length > 0 && (
-        <div>
-          <p className="mb-1.5 text-xs font-medium text-zinc-500">NOTAMs</p>
-          <div className="space-y-1">
-            {plan.notam_alerts
-              .filter((n) => n.severity !== "info")
-              .slice(0, 5)
-              .map((n, i) => (
-                <div
-                  key={i}
-                  className={`rounded px-2 py-1.5 text-xs ${
-                    n.severity === "critical"
-                      ? "bg-red-500/10 text-red-400"
-                      : "bg-amber-500/10 text-amber-400"
-                  }`}
-                >
-                  <span className="font-mono">{n.icao}</span> ·{" "}
-                  {n.type.replace("_", " ")} —{" "}
-                  <span className="text-zinc-500">
-                    {n.raw_text.slice(0, 80)}
-                  </span>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  warnings?: string[];
 }
 
 function NewQuotePageContent() {
@@ -254,11 +83,16 @@ function NewQuotePageContent() {
   const [previewError, setPreviewError] = useState("");
   const previewFetchedRef = useRef(false);
 
-  const [routePlan, setRoutePlan] = useState<RoutePlanResult | null>(null);
-  const [planningRoute, setPlanningRoute] = useState(false);
-  const [routeError, setRouteError] = useState("");
   const [optimizationMode, setOptimizationMode] =
     useState<OptimizationMode>("balanced");
+
+  const { routePlan, planningRoute, routeError, runRoutePlan } =
+    useRoutePlanning({
+      selectedTripId,
+      selectedAircraftId,
+      optimizationMode,
+      trips,
+    });
 
   const isPreviewFlow = !!tripIdParam;
 
@@ -340,40 +174,6 @@ function NewQuotePageContent() {
           .join(" → ")
       : "No legs"
     : null;
-
-  const runRoutePlan = useCallback(async () => {
-    if (!selectedTripId || !selectedAircraftId) return;
-    const trip = trips.find((t) => t.id === selectedTripId);
-    if (!trip || trip.legs.length === 0) return;
-    setPlanningRoute(true);
-    setRouteError("");
-    setRoutePlan(null);
-    try {
-      const res = await fetch("/api/routing/plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          aircraft_id: selectedAircraftId,
-          legs: trip.legs,
-          optimization_mode: optimizationMode,
-        }),
-      });
-      const data = (await res.json()) as
-        | { result: RoutePlanResult }
-        | { error: string };
-      if (!res.ok || "error" in data) {
-        setRouteError(
-          ("error" in data ? data.error : null) ?? "Route planning failed",
-        );
-      } else {
-        setRoutePlan(data.result);
-      }
-    } catch {
-      setRouteError("Network error");
-    } finally {
-      setPlanningRoute(false);
-    }
-  }, [selectedTripId, selectedAircraftId, optimizationMode, trips]);
 
   // Manual flow: auto-run route plan when trip + aircraft selected
   useEffect(() => {
@@ -476,6 +276,15 @@ function NewQuotePageContent() {
           {previewError}
         </div>
       )}
+
+      {preview?.warnings?.map((w, i) => (
+        <div
+          key={i}
+          className="mb-4 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm text-amber-400"
+        >
+          {w}
+        </div>
+      ))}
 
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
@@ -722,10 +531,7 @@ function NewQuotePageContent() {
                   {(["cost", "balanced", "time"] as const).map((m) => (
                     <button
                       key={m}
-                      onClick={() => {
-                        setOptimizationMode(m);
-                        setRoutePlan(null);
-                      }}
+                      onClick={() => setOptimizationMode(m)}
                       className={`flex-1 rounded px-2 py-1 text-xs capitalize transition-colors ${
                         optimizationMode === m
                           ? "bg-amber-400/20 text-amber-400"

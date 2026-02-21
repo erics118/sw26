@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { CreateCrewSchema } from "@/lib/schemas";
+import { parseBody, validationError, dbError } from "@/lib/api/helpers";
 
 export async function GET() {
   const supabase = await createClient();
@@ -10,25 +11,18 @@ export async function GET() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return dbError(error.message);
   }
   return NextResponse.json(data);
 }
 
 export async function POST(request: Request) {
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
+  const [body, err] = await parseBody(request);
+  if (err) return err;
 
   const parsed = CreateCrewSchema.safeParse(body);
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.issues.map((i) => i.message).join(", ") },
-      { status: 400 },
-    );
+    return validationError(parsed.error);
   }
 
   const supabase = await createClient();
@@ -39,7 +33,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return dbError(error.message);
   }
   return NextResponse.json(data, { status: 201 });
 }
