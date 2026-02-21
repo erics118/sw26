@@ -167,6 +167,8 @@ export const CreateQuoteSchema = QuoteSchema.omit({
   id: true,
   created_at: true,
   updated_at: true,
+}).extend({
+  fuel_price_override_usd: z.number().positive().optional(),
 });
 export type CreateQuoteInput = z.infer<typeof CreateQuoteSchema>;
 
@@ -237,3 +239,50 @@ export const IntakeRequestSchema = z.object({
   client_id: z.string().uuid().optional(),
 });
 export type IntakeRequest = z.infer<typeof IntakeRequestSchema>;
+
+// ─── Routing ──────────────────────────────────────────────────────────────────
+
+export const OptimizationModeSchema = z.enum(["cost", "time", "balanced"]);
+
+export const RoutingPlanRequestSchema = z.object({
+  aircraft_id: z.string().uuid(),
+  legs: z.array(TripLegSchema).min(1).max(20),
+  optimization_mode: OptimizationModeSchema.default("balanced"),
+  quote_id: z.string().uuid().optional(),
+  trip_id: z.string().uuid().optional(),
+});
+export type RoutingPlanRequest = z.infer<typeof RoutingPlanRequestSchema>;
+
+export const AirportUpsertSchema = z.object({
+  icao: z.string().length(4).toUpperCase(),
+  iata: z.string().length(3).nullable().optional(),
+  name: z.string().min(1),
+  city: z.string().nullable().optional(),
+  country_code: z.string().length(2),
+  lat: z.number().min(-90).max(90),
+  lon: z.number().min(-180).max(180),
+  elevation_ft: z.number().int().nullable().optional(),
+  longest_runway_ft: z.number().int().positive().nullable().optional(),
+  fuel_jet_a: z.boolean().default(true),
+  fuel_price_usd_gal: z.number().positive().nullable().optional(),
+  fbo_fee_usd: z.number().positive().nullable().optional(),
+  operating_hours_utc: z
+    .object({
+      from: z.string().regex(/^\d{2}:\d{2}$/),
+      to: z.string().regex(/^\d{2}:\d{2}$/),
+    })
+    .nullable()
+    .optional(),
+  curfew_utc: z
+    .object({
+      from: z.string().regex(/^\d{2}:\d{2}$/),
+      to: z.string().regex(/^\d{2}:\d{2}$/),
+    })
+    .nullable()
+    .optional(),
+  customs_available: z.boolean().default(false),
+  deicing_available: z.boolean().default(false),
+  slot_required: z.boolean().default(false),
+  notes: z.string().nullable().optional(),
+});
+export type AirportUpsertInput = z.infer<typeof AirportUpsertSchema>;

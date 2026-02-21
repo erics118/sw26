@@ -83,6 +83,7 @@ export interface PricingInput {
   cateringRequested: boolean;
   isInternational?: boolean;
   taxRate?: number;
+  fuelPriceOverrideUsd?: number; // overrides the hardcoded $7.50/gal default
 }
 
 export interface PricingResult {
@@ -138,7 +139,10 @@ export function calculatePricing(input: PricingInput): PricingResult {
     cateringRequested,
     isInternational = false,
     taxRate = TAX_RATE,
+    fuelPriceOverrideUsd,
   } = input;
+
+  const fuelPricePerGal = fuelPriceOverrideUsd ?? FUEL_PRICE_PER_GAL;
 
   const perf = CATEGORY_PERF[aircraftCategory] ?? CATEGORY_PERF["midsize"]!;
   const burnRate = fuelBurnGph ?? perf!.defaultFuelBurnGph;
@@ -162,7 +166,7 @@ export function calculatePricing(input: PricingInput): PricingResult {
     const flightHours = distNm / perf!.speedKts;
 
     // Fuel
-    const legFuel = flightHours * burnRate * FUEL_PRICE_PER_GAL;
+    const legFuel = flightHours * burnRate * fuelPricePerGal;
     totalFuelCost += legFuel;
     lineItems.push({
       leg: legNum,

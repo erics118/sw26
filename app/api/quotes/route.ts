@@ -116,6 +116,7 @@ export async function POST(request: Request) {
     marginPct,
     cateringRequested,
     isInternational,
+    fuelPriceOverrideUsd: input.fuel_price_override_usd,
   });
 
   // 5. Insert quote row

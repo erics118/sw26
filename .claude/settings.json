@@ -1,4 +1,14 @@
 {
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:notams.aim.faa.gov)",
+      "WebFetch(domain:www.faa.gov)",
+      "WebFetch(domain:api.faa.gov)",
+      "WebFetch(domain:www.autorouter.aero)",
+      "WebFetch(domain:adds-faa.opendata.arcgis.com)",
+      "WebFetch(domain:ais-faa.opendata.arcgis.com)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {

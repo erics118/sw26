@@ -47,6 +47,69 @@ interface ComplianceResult {
   failures: string[];
 }
 
+interface RouteLeg {
+  from_icao: string;
+  to_icao: string;
+  distance_nm: number;
+  flight_time_hr: number;
+  fuel_burn_gal: number;
+  fuel_cost_usd: number;
+  is_fuel_stop_leg: boolean;
+}
+
+interface RefuelStop {
+  icao: string;
+  airport_name: string;
+  added_distance_nm: number;
+  fuel_price_usd_gal: number;
+  fuel_uplift_gal: number;
+  fuel_cost_usd: number;
+  fbo_fee_usd: number;
+  ground_time_min: number;
+  customs: boolean;
+  deicing: boolean;
+  reason: string;
+}
+
+interface WeatherSummary {
+  icao: string;
+  go_nogo: "go" | "marginal" | "nogo";
+  ceiling_ft: number | null;
+  visibility_sm: number | null;
+  wind_speed_kts: number | null;
+  icing_risk: string;
+  convective_risk: string;
+}
+
+interface NotamAlert {
+  notam_id: string;
+  icao: string;
+  type: string;
+  severity: "info" | "caution" | "critical";
+  raw_text: string;
+}
+
+interface CostBreakdownResult {
+  fuel_cost_usd: number;
+  fbo_fees_usd: number;
+  refuel_stop_detour_cost_usd: number;
+  avg_fuel_price_usd_gal: number;
+  total_routing_cost_usd: number;
+}
+
+interface RoutePlanResult {
+  route_legs: RouteLeg[];
+  refuel_stops: RefuelStop[];
+  total_distance_nm: number;
+  total_flight_time_hr: number;
+  total_fuel_cost_usd: number;
+  weather_summary: WeatherSummary[];
+  notam_alerts: NotamAlert[];
+  risk_score: number;
+  on_time_probability: number;
+  cost_breakdown: CostBreakdownResult;
+}
+
 export default function NewQuotePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,6 +131,13 @@ export default function NewQuotePage() {
   const [checkingCompliance, setCheckingCompliance] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  const [routePlan, setRoutePlan] = useState<RoutePlanResult | null>(null);
+  const [planningRoute, setPlanningRoute] = useState(false);
+  const [routeError, setRouteError] = useState("");
+  const [optimizationMode, setOptimizationMode] = useState<
+    "cost" | "time" | "balanced"
+  >("balanced");
 
   useEffect(() => {
     async function load() {
@@ -159,6 +229,40 @@ export default function NewQuotePage() {
     }
   }, [selectedTripId, selectedAircraftId, selectedOperatorId]);
 
+  const runRoutePlan = useCallback(async () => {
+    if (!selectedTripId || !selectedAircraftId) return;
+    const trip = trips.find((t) => t.id === selectedTripId);
+    if (!trip || trip.legs.length === 0) return;
+    setPlanningRoute(true);
+    setRouteError("");
+    setRoutePlan(null);
+    try {
+      const res = await fetch("/api/routing/plan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          aircraft_id: selectedAircraftId,
+          legs: trip.legs,
+          optimization_mode: optimizationMode,
+        }),
+      });
+      const data = (await res.json()) as
+        | { result: RoutePlanResult }
+        | { error: string };
+      if (!res.ok || "error" in data) {
+        setRouteError(
+          ("error" in data ? data.error : null) ?? "Route planning failed",
+        );
+      } else {
+        setRoutePlan(data.result);
+      }
+    } catch {
+      setRouteError("Network error");
+    } finally {
+      setPlanningRoute(false);
+    }
+  }, [selectedTripId, selectedAircraftId, optimizationMode, trips]);
+
   async function handleSave() {
     if (!selectedTripId || !selectedAircraftId || !selectedOperatorId) {
       setError("Select a trip, aircraft, and operator.");
@@ -177,11 +281,36 @@ export default function NewQuotePage() {
           margin_pct: marginPct,
           notes: notes || null,
           status: "sent",
+          fuel_price_override_usd:
+            routePlan?.cost_breakdown.avg_fuel_price_usd_gal ?? undefined,
         }),
       });
-      const data = (await res.json()) as { id?: string; error?: string };
+      const data = (await res.json()) as {
+        quote?: { id: string };
+        error?: string;
+      };
       if (!res.ok) throw new Error(data.error ?? "Failed to create quote");
-      router.push(`/quotes/${data.id}`);
+      const quoteId = data.quote?.id;
+
+      // If a route plan was computed, persist it linked to the new quote
+      if (quoteId && routePlan) {
+        const trip = trips.find((t) => t.id === selectedTripId);
+        if (trip) {
+          await fetch("/api/routing/plan", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              aircraft_id: selectedAircraftId,
+              legs: trip.legs,
+              optimization_mode: optimizationMode,
+              quote_id: quoteId,
+              trip_id: selectedTripId,
+            }),
+          });
+        }
+      }
+
+      router.push(`/quotes/${quoteId}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unknown error");
       setSaving(false);
@@ -317,6 +446,149 @@ export default function NewQuotePage() {
               </div>
             )}
           </Card>
+
+          {/* Route Plan Results */}
+          {routePlan && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Route Plan</CardTitle>
+                <span className="text-xs text-zinc-500 capitalize">
+                  {optimizationMode}-optimized
+                </span>
+              </CardHeader>
+              <div className="space-y-4">
+                {/* Legs */}
+                <div className="space-y-1">
+                  {routePlan.route_legs.map((leg, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-3 rounded bg-zinc-800/40 px-3 py-2 text-sm"
+                    >
+                      <span className="font-mono text-amber-400">
+                        {leg.from_icao}
+                      </span>
+                      <span className="text-zinc-700">→</span>
+                      <span className="font-mono text-amber-400">
+                        {leg.to_icao}
+                      </span>
+                      {leg.is_fuel_stop_leg && (
+                        <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-xs text-blue-400">
+                          fuel stop
+                        </span>
+                      )}
+                      <span className="tabnum ml-auto text-xs text-zinc-500">
+                        {leg.distance_nm} nm · {leg.flight_time_hr.toFixed(1)}{" "}
+                        hr
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Refuel stops */}
+                {routePlan.refuel_stops.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium text-zinc-500">
+                      Refuel Stops
+                    </p>
+                    <div className="space-y-1.5">
+                      {routePlan.refuel_stops.map((stop, i) => (
+                        <div
+                          key={i}
+                          className="rounded border border-zinc-800 px-3 py-2 text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono font-semibold text-zinc-200">
+                              {stop.icao}
+                            </span>
+                            <span className="text-zinc-500">
+                              {stop.airport_name}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-3 text-zinc-600">
+                            <span>
+                              ${stop.fuel_price_usd_gal.toFixed(2)}/gal
+                            </span>
+                            <span>{stop.fuel_uplift_gal} gal</span>
+                            <span>${stop.fbo_fee_usd} FBO</span>
+                            <span>{stop.ground_time_min} min ground</span>
+                            {stop.customs && (
+                              <span className="text-emerald-600">customs</span>
+                            )}
+                            {stop.deicing && (
+                              <span className="text-blue-600">deicing</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Weather go/nogo */}
+                {routePlan.weather_summary.length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium text-zinc-500">
+                      Weather
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {routePlan.weather_summary.map((w) => (
+                        <div
+                          key={w.icao}
+                          className="flex items-center gap-1.5 rounded bg-zinc-800/40 px-2 py-1 text-xs"
+                        >
+                          <span className="font-mono text-zinc-400">
+                            {w.icao}
+                          </span>
+                          <span
+                            className={`rounded px-1 py-0.5 text-xs font-medium ${
+                              w.go_nogo === "go"
+                                ? "bg-emerald-500/10 text-emerald-400"
+                                : w.go_nogo === "marginal"
+                                  ? "bg-amber-500/10 text-amber-400"
+                                  : "bg-red-500/10 text-red-400"
+                            }`}
+                          >
+                            {w.go_nogo}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* NOTAM alerts */}
+                {routePlan.notam_alerts.filter((n) => n.severity !== "info")
+                  .length > 0 && (
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium text-zinc-500">
+                      NOTAMs
+                    </p>
+                    <div className="space-y-1">
+                      {routePlan.notam_alerts
+                        .filter((n) => n.severity !== "info")
+                        .slice(0, 5)
+                        .map((n, i) => (
+                          <div
+                            key={i}
+                            className={`rounded px-2 py-1.5 text-xs ${
+                              n.severity === "critical"
+                                ? "bg-red-500/10 text-red-400"
+                                : "bg-amber-500/10 text-amber-400"
+                            }`}
+                          >
+                            <span className="font-mono">{n.icao}</span> ·{" "}
+                            {n.type.replace("_", " ")} —{" "}
+                            <span className="text-zinc-500">
+                              {n.raw_text.slice(0, 80)}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
 
           {/* Operator */}
           <Card>
@@ -468,6 +740,107 @@ export default function NewQuotePage() {
               rows={3}
               className="w-full resize-none rounded border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-300 placeholder-zinc-700 focus:border-amber-400 focus:outline-none"
             />
+          </Card>
+
+          {/* Route Planning */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Route Planning</CardTitle>
+            </CardHeader>
+            <div className="space-y-3">
+              <div className="flex gap-1 rounded-md bg-zinc-800/60 p-1">
+                {(["cost", "balanced", "time"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => {
+                      setOptimizationMode(m);
+                      setRoutePlan(null);
+                    }}
+                    className={`flex-1 rounded px-2 py-1 text-xs capitalize transition-colors ${
+                      optimizationMode === m
+                        ? "bg-amber-400/20 text-amber-400"
+                        : "text-zinc-500 hover:text-zinc-300"
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+              {routeError && (
+                <p className="text-xs text-red-400">{routeError}</p>
+              )}
+              {routePlan && (
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-600">Distance</span>
+                    <span className="tabnum text-zinc-300">
+                      {routePlan.total_distance_nm.toLocaleString()} nm
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-600">Flight time</span>
+                    <span className="tabnum text-zinc-300">
+                      {routePlan.total_flight_time_hr.toFixed(1)} hr
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-600">Fuel stops</span>
+                    <span className="tabnum text-zinc-300">
+                      {routePlan.refuel_stops.length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-600">Risk score</span>
+                    <span
+                      className={`tabnum font-medium ${
+                        routePlan.risk_score < 30
+                          ? "text-emerald-400"
+                          : routePlan.risk_score < 60
+                            ? "text-amber-400"
+                            : "text-red-400"
+                      }`}
+                    >
+                      {routePlan.risk_score}/100
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-600">On-time prob.</span>
+                    <span className="tabnum text-zinc-300">
+                      {(routePlan.on_time_probability * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-600">Avg fuel price</span>
+                    <span className="tabnum text-zinc-300">
+                      $
+                      {routePlan.cost_breakdown.avg_fuel_price_usd_gal.toFixed(
+                        2,
+                      )}
+                      /gal
+                    </span>
+                  </div>
+                </div>
+              )}
+              <Button
+                onClick={() => void runRoutePlan()}
+                loading={planningRoute}
+                variant="secondary"
+                size="sm"
+                disabled={!selectedTripId || !selectedAircraftId}
+                className="w-full justify-center"
+              >
+                {planningRoute
+                  ? "Planning…"
+                  : routePlan
+                    ? "Re-plan Route"
+                    : "Plan Route"}
+              </Button>
+              {routePlan && (
+                <p className="text-center text-xs text-zinc-600">
+                  Fuel price override applied to quote
+                </p>
+              )}
+            </div>
           </Card>
 
           {/* Compliance */}
