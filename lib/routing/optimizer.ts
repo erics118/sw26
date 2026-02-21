@@ -17,6 +17,7 @@ import {
   effectiveFuelBurnGph,
   effectiveMinRunwayFt,
   usableFuelGal,
+  applyModeProfile,
 } from "./performance";
 import { buildGraph, dijkstra } from "./graph";
 import type { AircraftPerf } from "./performance";
@@ -385,6 +386,9 @@ export async function optimizeRoute(
   aircraft: AircraftPerf,
   mode: OptimizationMode,
 ): Promise<OptimizeRouteResult> {
+  // Apply mode-specific cruise profile (time=max cruise, cost=LRC, balanced=normal)
+  const modeAircraft = applyModeProfile(aircraft, mode);
+
   const allLegs: RouteLeg[] = [];
   const allStops: RefuelStop[] = [];
 
@@ -395,7 +399,7 @@ export async function optimizeRoute(
     const result = await findFuelStopsForLeg(
       fromAirport,
       toAirport,
-      aircraft,
+      modeAircraft,
       mode,
       0,
     );
@@ -409,9 +413,10 @@ export async function optimizeRoute(
   const totalFuelCost = allLegs.reduce((s, l) => s + l.fuel_cost_usd, 0);
   const costBreakdown = buildCostBreakdown(allLegs, allStops);
 
-  // Generate one alternative with the opposite mode
+  // Generate one alternative with the opposite mode (using that mode's cruise profile)
   const altMode: OptimizationMode =
-    mode === "cost" ? "time" : mode === "time" ? "cost" : "time";
+    mode === "cost" ? "time" : mode === "time" ? "cost" : "cost";
+  const altModeAircraft = applyModeProfile(aircraft, altMode);
 
   let alternatives: AlternativeRoute[] = [];
   try {
@@ -424,7 +429,7 @@ export async function optimizeRoute(
       const altResult = await findFuelStopsForLeg(
         fromAirport,
         toAirport,
-        aircraft,
+        altModeAircraft,
         altMode,
         0,
       );

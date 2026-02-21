@@ -140,6 +140,46 @@ export function flightTimeHr(
   return distNm / groundSpeedKts;
 }
 
+// ─── Mode-specific cruise profiles ───────────────────────────────────────────
+// Mirrors real aviation performance modes:
+//   time     → max cruise (MRC): rated speed, rated burn
+//   balanced → normal cruise:  95% speed, 92% burn
+//   cost     → long-range cruise (LRC): 90% speed, 83% burn (~8% fuel saving)
+
+const MODE_SPEED_FACTOR: Record<string, number> = {
+  time: 1.0,
+  balanced: 0.95,
+  cost: 0.9,
+};
+
+const MODE_BURN_FACTOR: Record<string, number> = {
+  time: 1.0,
+  balanced: 0.92,
+  cost: 0.83,
+};
+
+/**
+ * Returns a copy of AircraftPerf with cruise speed and fuel burn adjusted
+ * for the selected optimization mode. Resolves category defaults before
+ * applying factors so that null per-aircraft values are handled correctly.
+ */
+export function applyModeProfile(
+  aircraft: AircraftPerf,
+  mode: string,
+): AircraftPerf {
+  const speedFactor = MODE_SPEED_FACTOR[mode] ?? 1.0;
+  const burnFactor = MODE_BURN_FACTOR[mode] ?? 1.0;
+  const cat = categoryPerf(aircraft);
+  return {
+    ...aircraft,
+    cruise_speed_kts: Math.round(
+      (aircraft.cruise_speed_kts ?? cat.speedKts) * speedFactor,
+    ),
+    fuel_burn_gph:
+      (aircraft.fuel_burn_gph ?? cat.defaultFuelBurnGph) * burnFactor,
+  };
+}
+
 export interface RangeCheckResult {
   can_fly_direct: boolean;
   fuel_required_gal: number; // including reserve
