@@ -51,14 +51,12 @@ STEPS:
    - Set min_range_nm to the estimated total trip distance (use 500 nm per leg as a conservative estimate).
    - Apply wifi_required, bathroom_required, min_pax, and category filters from the trip.
    ${aircraft_id ? `- Only consider the specified aircraft ID.` : "- Select the best matching option."}
-3. For your top aircraft choice, call run_compliance_check to verify it is compliant.
-   - If it fails, try the next best aircraft.
-4. Call calculate_pricing for the compliant aircraft:
+3. Call calculate_pricing for the selected aircraft:
    - Set is_international = true if any leg has a non-US ICAO (not starting with 'K').
    - Set catering_requested = true if trip.catering_notes is non-null or notes mention catering.
    - Use the aircraft's fuel_burn_gph and home_base_icao if available.
-5. ${operator_id ? "Use the pre-selected operator." : "Call list_operators(active_only=true) and choose the operator with the highest reliability_score that is not blacklisted."}
-6. Call save_quote with all pricing data from step 4 plus:
+4. ${operator_id ? "Use the pre-selected operator." : "Call list_operators(active_only=true) and choose the operator with the highest reliability_score that is not blacklisted."}
+5. Call save_quote with all pricing data from step 3 plus:
    - trip_id: ${trip_id}
    ${client_id ? `- client_id: ${client_id}` : "- client_id: the client_id from the trip (if set)"}
    - margin_pct: ${margin_pct}

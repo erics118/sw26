@@ -2,7 +2,6 @@
 // Core routing logic: range validation, refueling stop selection, and route assembly.
 
 import {
-  getAirport,
   requireAirport,
   getFuelStopCandidates,
   haversineNm,
@@ -25,7 +24,6 @@ import type {
   RouteLeg,
   RefuelStop,
   AlternativeRoute,
-  RoutePlanResult,
   RouteCostBreakdown,
 } from "./types";
 import { RoutingError } from "./types";

@@ -1,6 +1,6 @@
 # sw26 — Private Aviation Charter Platform
 
-Next.js 16 app for managing private aviation charters: clients, operators, aircraft, quotes, compliance, and AI-powered intake.
+Next.js 16 app for managing private aviation charters: clients, aircraft, quotes, fleet forecasting, and AI-powered intake. Designed for a single operator (not multi-tenant).
 
 ## Tech Stack
 
@@ -8,7 +8,7 @@ Next.js 16 app for managing private aviation charters: clients, operators, aircr
 - **UI**: React 19, Tailwind CSS 4
 - **Auth/DB**: Supabase (SSR cookies via `@supabase/ssr`)
 - **Validation**: Zod
-- **AI**: Anthropic SDK (`@anthropic-ai/sdk`)
+- **AI**: Anthropic SDK (`@anthropic-ai/sdk`) + Claude Agent SDK (`@anthropic-ai/claude-agent-sdk`)
 - **Language**: TypeScript (strict)
 
 ## Commands
@@ -28,24 +28,48 @@ npm run format:check # Prettier check
 
 ```
 app/
-  (app)/             # Authenticated routes (dashboard, clients, quotes, aircraft, operators, compliance, intake)
-  (auth)/            # Auth routes (login)
-  api/               # API route handlers
+  (app)/             # Authenticated routes
+    dashboard/
+    intake/          # AI-powered trip intake
+    quotes/          # List, new, [id]
+    clients/         # List, [id]
+    aircraft/
+    operators/
+    fleet-forecasting/
+  (auth)/            # login
+  api/
     aircraft/        # CRUD + [id]
     clients/         # CRUD + [id]
-    compliance/      # check/, route
     crew/            # CRUD + [id]
-    intake/          # AI-powered intake
+    intake/          # AI intake endpoint
     operators/       # CRUD + [id]
-    quotes/          # CRUD + [id] + versions
+    quotes/          # CRUD + [id] + [id]/versions
+    routing/         # plan/, plan/[id], airports/, airports/[icao]
+    fleet-forecasting/  # forecast, insights, maintenance, overrides, recommendations, utilization
+
 lib/
-  ai/                # AI helpers (audit.ts, intake.ts)
-  compliance/        # Compliance checker
-  pricing/           # Pricing engine + geo
+  agents/            # Claude Agent SDK orchestration
+    index.ts         # runAgent() helper
+    intake.agent.ts  # Trip extraction (WebFetch enabled)
+    quote.agent.ts   # Quote generation
+    tools/
+      database.ts    # All MCP tool definitions (createDatabaseTools)
+  ai/                # Direct Claude helpers
+    audit.ts         # Audit log writer
+    intake.ts        # Legacy intake (unused by routes)
+    forecasting.ts   # Fleet forecasting AI
+  forecasting/       # Fleet forecasting logic (capacity, demand, utilization, etc.)
+  pricing/
+    engine.ts        # Deterministic pricing engine
+  routing/           # Flight routing (graph, optimizer, weather, notam, risk, performance)
   schemas/           # Zod schemas
-  supabase/          # client.ts (browser), server.ts (SSR)
+  supabase/
+    client.ts        # Browser client
+    server.ts        # SSR/RSC client
   database.types.ts  # Generated Supabase types
-  geo.ts             # Geo utilities
+  geo.ts             # Geo utilities (haversineNm, distanceNm)
+  ops/               # Mock data + types for ops views
+
 components/
   Sidebar.tsx
   ui/
@@ -59,10 +83,18 @@ Supabase auth managed via `middleware.ts`:
 - Unauthenticated requests to protected routes redirect to `/login`
 - Authenticated users hitting `/login` redirect to `/dashboard`
 
-Supabase clients:
+## Agents (Claude Agent SDK)
 
-- `lib/supabase/client.ts` — browser client
-- `lib/supabase/server.ts` — server/RSC client
+- `lib/agents/index.ts` — `runAgent<T>()` shared runner, uses `bypassPermissions`
+- `lib/agents/tools/database.ts` — `createDatabaseTools(supabase)` — MCP tools: `search_clients`, `save_trip`, `get_trip`, `list_aircraft`, `list_operators`, `list_crew`, `calculate_pricing`, `save_quote`
+- `lib/agents/intake.agent.ts` — extracts trip from free text, WebFetch enabled
+- `lib/agents/quote.agent.ts` — builds and saves quotes, no builtin tools
+
+Agent notes:
+
+- `permissionMode: "bypassPermissions"` requires `allowDangerouslySkipPermissions: true`
+- Pass `tools: []` to disable all builtin tools; pass `["WebFetch"]` etc. to selectively enable
+- JSON extraction uses `{` / `}` position search (not anchored regex)
 
 ## Env Variables
 

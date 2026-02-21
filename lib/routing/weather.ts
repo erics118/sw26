@@ -9,7 +9,6 @@ import type {
   GoNogo,
 } from "./types";
 import type { AircraftPerf } from "./performance";
-import { effectiveSpeedKts } from "./performance";
 
 const BASE_URL = "https://aviationweather.gov/api/data";
 const FETCH_TIMEOUT_MS = 6000;

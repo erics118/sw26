@@ -1,7 +1,6 @@
 import { tool } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import { calculatePricing } from "@/lib/pricing/engine";
-import { runComplianceCheck } from "@/lib/compliance/checker";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Json, TripLeg } from "@/lib/database.types";
 
@@ -208,7 +207,7 @@ export function createDatabaseTools(supabase: SupabaseClient) {
       },
     ),
 
-    // ── Pricing & Compliance ──────────────────────────────────────────────────
+    // ── Pricing ───────────────────────────────────────────────────────────────
 
     tool(
       "calculate_pricing",
@@ -257,35 +256,6 @@ export function createDatabaseTools(supabase: SupabaseClient) {
           marginPct: args.margin_pct,
           cateringRequested: args.catering_requested,
           isInternational: args.is_international,
-        });
-        return ok(result);
-      },
-    ),
-
-    tool(
-      "run_compliance_check",
-      "Run compliance checks for an aircraft/operator/crew combination. Returns pass/fail with failure reasons and warnings.",
-      {
-        aircraft_id: z.string().uuid(),
-        operator_id: z.string().uuid(),
-        crew_ids: z.array(z.string().uuid()).optional(),
-        legs: z
-          .array(
-            z.object({
-              from_icao: z.string(),
-              to_icao: z.string(),
-              date: z.string(),
-              time: z.string(),
-            }),
-          )
-          .optional(),
-        min_cabin_height_in: z.number().nullable().optional(),
-        estimated_flight_hours: z.number().optional(),
-      },
-      async (args) => {
-        const result = await runComplianceCheck({
-          ...args,
-          legs: args.legs as TripLeg[] | undefined,
         });
         return ok(result);
       },

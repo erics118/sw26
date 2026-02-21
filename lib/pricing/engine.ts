@@ -1,4 +1,4 @@
-import { distanceNm } from "./geo";
+import { distanceNm } from "@/lib/geo";
 import type { TripLeg } from "@/lib/database.types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
