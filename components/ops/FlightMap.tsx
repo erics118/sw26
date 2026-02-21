@@ -132,7 +132,7 @@ function MapResizer() {
   const map = useMap();
   useEffect(() => {
     const observer = new ResizeObserver(() => {
-      map.invalidateSize();
+      map.invalidateSize({ animate: true, pan: false });
     });
     observer.observe(map.getContainer());
     return () => observer.disconnect();
@@ -195,7 +195,10 @@ export default function FlightMap({
     () => flights.filter((f) => f.inAir),
     [flights],
   );
-  const selectedFlight = flights.find((f) => f.id === selectedId) || null;
+  const selectedFlight = useMemo(
+    () => flights.find((f) => f.id === selectedId) ?? null,
+    [flights, selectedId],
+  );
 
   const handleHover = useCallback(
     (f: Flight | null) => setHoveredFlight(f),

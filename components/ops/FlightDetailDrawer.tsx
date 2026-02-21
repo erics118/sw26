@@ -33,12 +33,18 @@ export default function FlightDetailDrawer({
   open,
   onClose,
 }: FlightDetailDrawerProps) {
-  if (!open || !flight) return null;
+  if (!flight) return null;
 
   const flightAlerts = alerts.filter((a) => a.flightId === flight.id);
 
   return (
-    <div className="glass-panel border-border/50 animate-in slide-in-from-right flex h-full w-[380px] flex-col overflow-hidden border-l duration-300">
+    <div
+      className={`glass-panel border-border/50 flex h-full w-[380px] flex-col overflow-hidden border-l duration-300 ${
+        open
+          ? "animate-in slide-in-from-right"
+          : "animate-out slide-out-to-right"
+      }`}
+    >
       {/* Header */}
       <div className="border-border/50 flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
