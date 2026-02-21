@@ -25,7 +25,7 @@ export default async function QuotesPage({ searchParams }: PageProps) {
   let query = supabase
     .from("quotes")
     .select(
-      `id, status, created_at, updated_at, version, margin_pct, currency,
+      `id, trip_id, status, created_at, updated_at, version, margin_pct, currency,
        broker_name, broker_commission_pct, notes, sent_at, confirmed_at,
        quote_valid_until, chosen_aircraft_category, estimated_total_hours,
        won_lost_reason, scheduled_departure_time, scheduled_arrival_time,
