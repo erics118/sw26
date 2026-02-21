@@ -23,7 +23,6 @@ export default function NewClientPage() {
       nationality: formData.get("nationality") || null,
       notes: formData.get("notes") || null,
       vip: formData.get("vip") === "on",
-      risk_flag: formData.get("risk_flag") === "on",
     };
 
     try {
@@ -186,20 +185,6 @@ export default function NewClientPage() {
                 className="text-sm font-medium text-zinc-300"
               >
                 VIP Client
-              </label>
-            </div>
-            <div className="flex items-center gap-2">
-              <input
-                id="risk_flag"
-                name="risk_flag"
-                type="checkbox"
-                className="h-4 w-4 rounded border-zinc-700 bg-zinc-800 text-red-400 focus:ring-red-400"
-              />
-              <label
-                htmlFor="risk_flag"
-                className="text-sm font-medium text-zinc-300"
-              >
-                Risk Flag
               </label>
             </div>
           </div>
