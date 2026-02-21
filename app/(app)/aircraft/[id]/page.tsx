@@ -49,7 +49,7 @@ export default async function AircraftDetailPage({ params }: PageProps) {
     STATUS_STYLES[aircraft.status] ?? STATUS_STYLES["inactive"];
 
   return (
-    <div className="p-8">
+    <div className="mx-auto max-w-5xl p-8">
       {/* Header */}
       <div className="mb-6">
         <div className="mb-2 flex items-center gap-3">
@@ -88,9 +88,9 @@ export default async function AircraftDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-5">
-        {/* Performance */}
-        <div className="col-span-2">
+      <div className="grid grid-cols-2 gap-5">
+        {/* Left column */}
+        <div className="space-y-5">
           <Card>
             <CardHeader>
               <CardTitle>Performance</CardTitle>
@@ -124,10 +124,7 @@ export default async function AircraftDetailPage({ params }: PageProps) {
               )}
             </div>
           </Card>
-        </div>
 
-        {/* Sidebar */}
-        <div className="space-y-5">
           <Card>
             <CardHeader>
               <CardTitle>Capabilities & Availability</CardTitle>
@@ -143,51 +140,71 @@ export default async function AircraftDetailPage({ params }: PageProps) {
               />
               <DetailRow
                 label="Wi-Fi"
-                value={aircraft.has_wifi ? "Yes" : "No"}
+                value={
+                  aircraft.has_wifi ? (
+                    <span className="rounded border border-sky-400/20 bg-sky-400/5 px-2 py-0.5 text-xs text-sky-400">
+                      Yes
+                    </span>
+                  ) : (
+                    "No"
+                  )
+                }
               />
               <DetailRow
                 label="Lavatory"
-                value={aircraft.has_bathroom ? "Yes" : "No"}
+                value={
+                  aircraft.has_bathroom ? (
+                    <span className="rounded border border-zinc-600/40 bg-zinc-700/20 px-2 py-0.5 text-xs text-zinc-400">
+                      Yes
+                    </span>
+                  ) : (
+                    "No"
+                  )
+                }
               />
             </div>
           </Card>
+        </div>
 
-          {(aircraft.fuel_burn_gph ||
-            aircraft.max_fuel_capacity_gal ||
-            aircraft.reserve_fuel_gal ||
-            aircraft.max_payload_lbs) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Weight & Fuel</CardTitle>
-              </CardHeader>
-              <div>
-                {aircraft.max_payload_lbs && (
-                  <DetailRow
-                    label="Max payload"
-                    value={`${aircraft.max_payload_lbs.toLocaleString()} lbs`}
-                  />
+        {/* Right column */}
+        <div className="space-y-5">
+          <Card>
+            <CardHeader>
+              <CardTitle>Weight & Fuel</CardTitle>
+            </CardHeader>
+            <div>
+              {aircraft.max_payload_lbs && (
+                <DetailRow
+                  label="Max payload"
+                  value={`${aircraft.max_payload_lbs.toLocaleString()} lbs`}
+                />
+              )}
+              {aircraft.fuel_burn_gph && (
+                <DetailRow
+                  label="Fuel burn"
+                  value={`${aircraft.fuel_burn_gph} gph`}
+                />
+              )}
+              {aircraft.max_fuel_capacity_gal && (
+                <DetailRow
+                  label="Fuel capacity"
+                  value={`${aircraft.max_fuel_capacity_gal.toLocaleString()} gal`}
+                />
+              )}
+              {aircraft.reserve_fuel_gal && (
+                <DetailRow
+                  label="Reserve fuel"
+                  value={`${aircraft.reserve_fuel_gal} gal`}
+                />
+              )}
+              {!aircraft.fuel_burn_gph &&
+                !aircraft.max_fuel_capacity_gal &&
+                !aircraft.reserve_fuel_gal &&
+                !aircraft.max_payload_lbs && (
+                  <p className="py-2 text-xs text-zinc-500">—</p>
                 )}
-                {aircraft.fuel_burn_gph && (
-                  <DetailRow
-                    label="Fuel burn"
-                    value={`${aircraft.fuel_burn_gph} gph`}
-                  />
-                )}
-                {aircraft.max_fuel_capacity_gal && (
-                  <DetailRow
-                    label="Fuel capacity"
-                    value={`${aircraft.max_fuel_capacity_gal.toLocaleString()} gal`}
-                  />
-                )}
-                {aircraft.reserve_fuel_gal && (
-                  <DetailRow
-                    label="Reserve fuel"
-                    value={`${aircraft.reserve_fuel_gal} gal`}
-                  />
-                )}
-              </div>
-            </Card>
-          )}
+            </div>
+          </Card>
 
           <Card>
             <CardHeader>
