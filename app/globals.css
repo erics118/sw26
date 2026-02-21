@@ -81,6 +81,62 @@ body {
   animation: shimmer 1.4s infinite;
 }
 
+/* Login → Dashboard transition */
+@keyframes login-exit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(12px);
+  }
+}
+.login-exit {
+  animation: login-exit 0.32s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes overlay-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.overlay-fade-in {
+  animation: overlay-fade-in 0.35s ease-in forwards;
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.page-in {
+  animation: page-in 0.45s ease-out 0.05s both;
+}
+
+@keyframes sidebar-in {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.sidebar-in {
+  animation: sidebar-in 0.4s ease-out both;
+}
+
 /* Mono number styling */
 .tabnum {
   font-family: var(--font-mono);

@@ -26,7 +26,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SkyWorks — Charter Ops",
+  title: "SkyOps — Charter Ops",
   description: "Part 135 Charter Management Platform",
 };
 
