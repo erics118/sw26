@@ -31,8 +31,10 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Redirect unauthenticated users away from protected routes
-  if (!user && pathname.startsWith("/app")) {
+  const isPublic = pathname === "/" || pathname === "/login";
+
+  // Redirect unauthenticated users to login
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -41,7 +43,7 @@ export async function middleware(request: NextRequest) {
   // Redirect authenticated users away from login
   if (user && pathname === "/login") {
     const url = request.nextUrl.clone();
-    url.pathname = "/app/dashboard";
+    url.pathname = "/dashboard";
     return NextResponse.redirect(url);
   }
 
