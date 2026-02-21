@@ -232,17 +232,6 @@ export default function DashboardPage() {
           </h1>
           <p className="mt-1 text-sm text-zinc-500">{dateStr}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button className="rounded-md border border-zinc-700 p-2 hover:border-emerald-500/50 hover:bg-emerald-500/5">
-            🔍
-          </button>
-          <button className="rounded-md border border-zinc-700 p-2 hover:border-emerald-500/50 hover:bg-emerald-500/5">
-            ❤️
-          </button>
-          <button className="rounded-md border border-zinc-700 p-2 hover:border-emerald-500/50 hover:bg-emerald-500/5">
-            👤
-          </button>
-        </div>
       </div>
 
       {/* Top KPI Row - Pipeline & Fleet Health */}
