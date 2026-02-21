@@ -6,6 +6,8 @@ export interface RoutingInput {
   aircraft_id: string;
   legs: { from_icao: string; to_icao: string; date: string; time: string }[];
   optimization_mode: OptimizationMode;
+  /** When true, skip weather/NOTAM fetches (faster; use for quote generation) */
+  skip_weather_notam?: boolean;
 }
 
 // A single flight segment — may be an original leg or an injected fuel-stop leg

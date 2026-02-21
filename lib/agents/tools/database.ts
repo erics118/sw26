@@ -192,7 +192,7 @@ export function createDatabaseTools(supabase: SupabaseClient) {
         if (wifi_required === true) q = q.eq("has_wifi", true);
         if (bathroom_required === true) q = q.eq("has_bathroom", true);
         if (min_pax) q = q.gte("pax_capacity", min_pax);
-        const { data, error } = await q;
+        const { data, error } = await q.limit(5);
         if (error) return fail(error.message);
         return ok(data ?? []);
       },
@@ -210,20 +210,32 @@ export function createDatabaseTools(supabase: SupabaseClient) {
 
     tool(
       "compute_route_plan",
-      "Compute a full route plan for an aircraft and trip legs. Returns optimized route (including fuel stops), weather summaries, NOTAM alerts, risk score, on-time probability, and cost breakdown. Use cost_breakdown.avg_fuel_price_usd_gal as fuel_price_override_usd when calling calculate_pricing.",
+      "Compute a full route plan for an aircraft and trip legs. Returns optimized route (including fuel stops), weather summaries, NOTAM alerts, risk score, on-time probability, and cost breakdown. Use cost_breakdown.avg_fuel_price_usd_gal as fuel_price_override_usd when calling calculate_pricing. Pass skip_weather_notam: true for faster runs when building quotes (no live weather/NOTAM fetch).",
       {
         aircraft_id: z.string().uuid(),
         legs: z.array(TripLegSchema).min(1),
         optimization_mode: OptimizationModeSchema.default("balanced").describe(
           "Route optimization preference: cost = minimize fuel cost; time = minimize flight time; balanced = trade-off",
         ),
+        skip_weather_notam: z
+          .boolean()
+          .optional()
+          .describe(
+            "If true, skip weather/NOTAM API calls for speed (use when building quotes)",
+          ),
       },
-      async ({ aircraft_id, legs, optimization_mode }) => {
+      async ({
+        aircraft_id,
+        legs,
+        optimization_mode,
+        skip_weather_notam = false,
+      }) => {
         try {
           const result = await computeRoutePlan({
             aircraft_id,
             legs,
             optimization_mode,
+            skip_weather_notam,
           });
           return ok(result);
         } catch (err) {

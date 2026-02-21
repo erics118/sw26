@@ -113,7 +113,7 @@ function NewQuotePageContent() {
             )
             .is("quotes.id", null)
             .order("created_at", { ascending: false })
-            .limit(10);
+            .limit(100);
 
       const [{ data: tripsData }, { data: aircraftData }] = await Promise.all([
         tripsQuery,
@@ -218,7 +218,7 @@ function NewQuotePageContent() {
         aircraft_id: selectedAircraftId || undefined,
         margin_pct: marginPct,
         notes: notes || null,
-        status: "sent",
+        status: "new",
       };
 
       if (isPreviewFlow && preview && selectedPlan?.plan_id) {
@@ -369,9 +369,14 @@ function NewQuotePageContent() {
                   <div className="font-mono text-sm text-amber-400">
                     {tripRoute}
                   </div>
-                  <div className="mt-1 text-xs text-zinc-600">
-                    {selectedTrip.pax_adults} pax ·{" "}
-                    {new Date(selectedTrip.created_at).toLocaleDateString()}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-zinc-600">
+                    <span>
+                      {selectedTrip.pax_adults} pax ·{" "}
+                      {new Date(selectedTrip.created_at).toLocaleDateString()}
+                    </span>
+                    <span className="font-mono text-zinc-500">
+                      {selectedTrip.id}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -388,7 +393,7 @@ function NewQuotePageContent() {
                 </a>
               </p>
             ) : (
-              <div className="space-y-2">
+              <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
                 {trips.map((t) => {
                   const legs = t.legs;
                   const route =
@@ -409,7 +414,7 @@ function NewQuotePageContent() {
                           : "border-zinc-800 hover:border-zinc-700"
                       }`}
                     >
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-sm text-amber-400">
                           {route}
                         </span>
@@ -417,6 +422,9 @@ function NewQuotePageContent() {
                           {t.pax_adults} pax ·{" "}
                           {new Date(t.created_at).toLocaleDateString()}
                         </span>
+                      </div>
+                      <div className="mt-1 font-mono text-xs text-zinc-500">
+                        {t.id}
                       </div>
                     </button>
                   );
@@ -648,7 +656,7 @@ function NewQuotePageContent() {
             size="lg"
             className="w-full justify-center"
           >
-            Save & Send Quote →
+            Save Quote →
           </Button>
 
           {canSave && (

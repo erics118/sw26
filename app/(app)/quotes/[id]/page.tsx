@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import Badge, { statusVariant } from "@/components/ui/Badge";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import StatusStepper from "@/components/ui/StatusStepper";
+import QuoteStatusUpdate from "@/components/Quotes/QuoteStatusUpdate";
 import CostBreakdown from "@/components/ui/CostBreakdown";
 import type { RoutePlan } from "@/lib/database.types";
 import RoutePlanSection from "@/components/Quotes/RoutePlanSection";
@@ -174,34 +175,49 @@ export default async function QuoteDetailPage({ params }: PageProps) {
         </Badge>
       </div>
 
-      {/* Status stepper */}
+      {/* Status stepper + update */}
       <Card className="mb-6">
-        <StatusStepper status={quote.status} />
+        <div className="flex flex-col gap-4">
+          <StatusStepper status={quote.status} />
+          {quote.status !== "lost" && quote.status !== "completed" && (
+            <QuoteStatusUpdate
+              quoteId={quote.id}
+              currentStatus={quote.status}
+            />
+          )}
+        </div>
       </Card>
 
-      {/* AI selection reasoning */}
+      {/* AI selection reasoning (collapsible) */}
       {selectionReasoning && (
         <Card className="mb-6 border-amber-400/20 bg-amber-400/5">
-          <CardHeader>
-            <CardTitle>AI Selection</CardTitle>
-          </CardHeader>
-          <div className="space-y-3 text-sm">
-            <div>
-              <span className="text-zinc-500">Aircraft: </span>
-              <span className="text-zinc-300">
-                {selectionReasoning.aircraft_explanation}
-              </span>
+          <details className="group">
+            <summary className="cursor-pointer list-none">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Why we chose this</CardTitle>
+                <span className="text-xs text-zinc-500 transition-transform group-open:rotate-180">
+                  ▼
+                </span>
+              </CardHeader>
+            </summary>
+            <div className="space-y-3 px-6 pb-6 text-sm">
+              <div>
+                <span className="text-zinc-500">Aircraft: </span>
+                <span className="text-zinc-300">
+                  {selectionReasoning.aircraft_explanation}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">
+                  Route ({selectionReasoning.optimization_mode ?? "balanced"}
+                  ):{" "}
+                </span>
+                <span className="text-zinc-300">
+                  {selectionReasoning.route_explanation}
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="text-zinc-500">
-                Route ({selectionReasoning.optimization_mode ?? "balanced"}
-                ):{" "}
-              </span>
-              <span className="text-zinc-300">
-                {selectionReasoning.route_explanation}
-              </span>
-            </div>
-          </div>
+          </details>
         </Card>
       )}
 

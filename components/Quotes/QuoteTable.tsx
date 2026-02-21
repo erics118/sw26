@@ -22,6 +22,7 @@ type QuoteCosts = {
 
 export type QuoteRow = {
   id: string;
+  trip_id: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -61,7 +62,8 @@ export function QuoteTable({ quotes }: { quotes: QuoteRow[] }) {
         <thead>
           <tr className="border-b border-zinc-800">
             {[
-              "ID",
+              "Quote ID",
+              "Trip ID",
               "Client",
               "Route",
               "Aircraft",
@@ -99,6 +101,12 @@ export function QuoteTable({ quotes }: { quotes: QuoteRow[] }) {
                   >
                     {q.id.slice(0, 8)}…
                   </Link>
+                </td>
+                <td
+                  className="px-5 py-3 font-mono text-xs text-zinc-500"
+                  title={q.trip_id}
+                >
+                  {q.trip_id?.slice(0, 8)}…
                 </td>
                 <td className="px-5 py-3 text-zinc-300">
                   {q.clients?.name ?? <span className="text-zinc-600">—</span>}
