@@ -36,7 +36,7 @@ const ROUTE_PAIRS = [
   ["KBOS", "KJFK"],
   ["KPBI", "KATL"],
   ["KHPN", "KBWI"],
-  ["KVAN", "KORD"],
+  ["KPHX", "KORD"],
   ["KBUR", "KDEN"],
   ["KDAL", "KHOU"],
 ];

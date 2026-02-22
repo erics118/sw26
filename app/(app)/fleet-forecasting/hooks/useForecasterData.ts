@@ -6,7 +6,7 @@ import type {
   RecommendationSummary,
 } from "@/lib/forecasting/types";
 
-type Tab = "forecast" | "utilization";
+type Tab = "forecast" | "utilization" | "actions";
 type Horizon = 7 | 30 | 90;
 
 export function useForecasterData() {
@@ -98,7 +98,7 @@ export function useForecasterData() {
       if (tab === "forecast") {
         fetchForecast(horizon);
         fetchForecastInsight(horizon);
-      } else if (tab === "utilization") {
+      } else if (tab === "utilization" || tab === "actions") {
         if (!utilData) fetchUtilization();
         if (!utilInsight) fetchUtilInsight();
       }

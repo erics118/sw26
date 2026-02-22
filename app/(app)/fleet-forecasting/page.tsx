@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { ForecastChart } from "@/components/FleetForecasting/ForecastChart";
 import { CapacityGapCard } from "@/components/FleetForecasting/CapacityGapCard";
 import { UtilizationBar } from "@/components/FleetForecasting/UtilizationBar";
@@ -10,7 +11,7 @@ import Card from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
 import { useForecasterData } from "./hooks/useForecasterData";
 
-type Tab = "forecast" | "utilization";
+type Tab = "forecast" | "utilization" | "actions";
 type Horizon = 7 | 30 | 90;
 type Aggregation = "daily" | "weekly";
 type UtilView = "aircraft" | "base";
@@ -18,6 +19,7 @@ type UtilView = "aircraft" | "base";
 const TABS: { id: Tab; label: string }[] = [
   { id: "forecast", label: "Fleet Forecast" },
   { id: "utilization", label: "Underutilization" },
+  { id: "actions", label: "Suggested Actions" },
 ];
 
 const FLAG_VARIANT: Record<string, "red" | "amber" | "yellow"> = {
@@ -26,8 +28,16 @@ const FLAG_VARIANT: Record<string, "red" | "amber" | "yellow"> = {
   inefficient: "yellow",
 };
 
-export default function FleetForecastingPage() {
-  const [activeTab, setActiveTab] = useState<Tab>("forecast");
+function FleetForecastingContent() {
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const [activeTab, setActiveTab] = useState<Tab>(
+    tabParam === "forecast" ||
+      tabParam === "utilization" ||
+      tabParam === "actions"
+      ? tabParam
+      : "forecast",
+  );
   const [horizon, setHorizon] = useState<Horizon>(7);
   const [aggregation, setAggregation] = useState<Aggregation>("daily");
   const [truthMode, setTruthMode] = useState(false);
@@ -114,7 +124,7 @@ export default function FleetForecastingPage() {
             }`}
           >
             {tab.label}
-            {tab.id === "utilization" && recsData?.recommendations?.length
+            {tab.id === "actions" && recsData?.recommendations?.length
               ? ` (${recsData.recommendations.length})`
               : ""}
           </button>
@@ -464,19 +474,43 @@ export default function FleetForecastingPage() {
               </table>
             )}
           </Card>
+        </div>
+      )}
 
-          {recsData?.recommendations && recsData.recommendations.length > 0 && (
+      {/* ─── Suggested Actions ─────────────────────────────────────────── */}
+      {activeTab === "actions" && (
+        <div className="space-y-4">
+          {utilLoading ? (
             <div className="space-y-3">
-              <h3 className="text-xs font-semibold tracking-widest text-zinc-600 uppercase">
-                Recommended Actions ({recsData.recommendations.length})
-              </h3>
-              {recsData.recommendations.map((s, i) => (
-                <RecommendationCard key={i} rec={s.rec} />
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-20 animate-pulse rounded-lg border border-zinc-800 bg-zinc-900"
+                />
               ))}
             </div>
+          ) : !recsData?.recommendations?.length ? (
+            <Card>
+              <p className="py-12 text-center text-sm text-zinc-600">
+                No recommended actions at this time. Fleet is operating within
+                normal parameters.
+              </p>
+            </Card>
+          ) : (
+            recsData.recommendations.map((s, i) => (
+              <RecommendationCard key={i} rec={s.rec} />
+            ))
           )}
         </div>
       )}
     </div>
+  );
+}
+
+export default function FleetForecastingPage() {
+  return (
+    <Suspense>
+      <FleetForecastingContent />
+    </Suspense>
   );
 }

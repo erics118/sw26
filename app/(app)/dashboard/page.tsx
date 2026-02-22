@@ -60,9 +60,25 @@ type UtilizationData = {
 };
 
 type RecommendationData = {
+  recommendations?: Array<{
+    one_line_reason: string;
+    rec: { tail_number: string; type: string };
+  }>;
   reposition?: Array<{
     aircraft_id: string;
     destination_icao: string;
+  }>;
+};
+
+type RevenueSummaryData = {
+  total_forecast_revenue: number;
+  avg_weekly_revenue: number;
+  historical_weekly: Array<{ week: string; label: string; revenue: number }>;
+  forecast_weekly: Array<{
+    week: string;
+    label: string;
+    revenue: number;
+    p80_revenue: number;
   }>;
 };
 
@@ -71,11 +87,13 @@ function KPICard({
   value,
   subLabel,
   accent = false,
+  danger = false,
 }: {
   label: string;
   value: string | number;
   subLabel?: string;
   accent?: boolean;
+  danger?: boolean;
 }) {
   return (
     <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4 backdrop-blur">
@@ -84,7 +102,11 @@ function KPICard({
       </p>
       <p
         className={`tabnum mt-3 text-4xl font-bold ${
-          accent ? "text-emerald-400" : "text-zinc-100"
+          danger
+            ? "text-red-400"
+            : accent
+              ? "text-emerald-400"
+              : "text-zinc-100"
         }`}
       >
         {value}
@@ -94,25 +116,91 @@ function KPICard({
   );
 }
 
-function SparkChart({ color = "#00e696" }: { color?: string }) {
+function MiniRevenueChart({
+  historical,
+  forecast,
+}: {
+  historical: Array<{ revenue: number }>;
+  forecast: Array<{ revenue: number }>;
+}) {
+  // Show last 5 historical weeks + up to 2 forecast weeks.
+  // Each segment gets its own x-slots so they never share an x-coordinate —
+  // that prevents the vertical jump at the junction.
+  // Historical: indices 0…histCount-1, Forecast: indices histCount…n-1
+  const histPoints = historical.slice(-5);
+  const forePoints = forecast.slice(0, 2);
+  const histCount = histPoints.length;
+  const foreCount = forePoints.length;
+  const n = histCount + foreCount;
+
+  if (histCount < 1 || foreCount < 1 || n < 2) {
+    return <div className="h-12 w-full rounded bg-zinc-800/50" />;
+  }
+
+  const maxRev = Math.max(
+    ...histPoints.map((p) => p.revenue),
+    ...forePoints.map((p) => p.revenue),
+    1,
+  );
+  const W = 100;
+  const H = 40;
+  // BRIDGE is the narrow gap between history end and forecast start — keeping
+  // it tiny makes the connecting segment nearly vertical (steep).
+  const BRIDGE = 2;
+  const innerSteps = histCount + foreCount - 2;
+  const step = innerSteps > 0 ? (W - BRIDGE) / innerSteps : W - BRIDGE;
+  const histEndX = (histCount - 1) * step;
+  const firstForeX = histEndX + BRIDGE;
+
+  function posX(i: number) {
+    return i < histCount ? i * step : firstForeX + (i - histCount) * step;
+  }
+  function py(rev: number) {
+    return H - (rev / maxRev) * (H - 4) - 2;
+  }
+
+  const lastHistRev = histPoints[histCount - 1]?.revenue ?? 0;
+
+  const histLine = histPoints
+    .map((p, i) => `${posX(i)},${py(p.revenue)}`)
+    .join(" ");
+
+  // Bridge anchor at last historical point → first forecast point (steep diagonal)
+  const foreLine = [
+    `${histEndX},${py(lastHistRev)}`,
+    ...forePoints.map((p, i) => `${posX(histCount + i)},${py(p.revenue)}`),
+  ].join(" ");
+
+  const foreZone = [
+    `${histEndX},${H}`,
+    `${histEndX},${py(lastHistRev)}`,
+    ...forePoints.map((p, i) => `${posX(histCount + i)},${py(p.revenue)}`),
+    `${posX(histCount + foreCount - 1)},${H}`,
+  ].join(" ");
+
   return (
     <svg
-      viewBox="0 0 100 40"
+      viewBox={`0 0 ${W} ${H}`}
       className="h-12 w-full"
       preserveAspectRatio="none"
     >
+      {/* Forecast zone fill */}
+      <polygon points={foreZone} fill="#10b98120" />
+      {/* Historical line */}
+      {histCount > 1 && (
+        <polyline
+          points={histLine}
+          fill="none"
+          stroke="#52525b"
+          strokeWidth="1.5"
+        />
+      )}
+      {/* Forecast line (starts at last historical point = seamless join) */}
       <polyline
-        points="0,30 15,22 30,25 45,15 60,18 75,8 100,5"
+        points={foreLine}
         fill="none"
-        stroke={color}
+        stroke="#10b981"
         strokeWidth="1.5"
-      />
-      <polyline
-        points="0,32 15,28 30,26 45,20 60,22 75,12 100,8"
-        fill="none"
-        stroke={`${color}33`}
-        strokeWidth="1"
-        strokeDasharray="2,2"
       />
     </svg>
   );
@@ -126,12 +214,15 @@ export default function DashboardPage() {
   const [utilizationData, setUtilizationData] =
     useState<UtilizationData | null>(null);
   const [recsData, setRecsData] = useState<RecommendationData | null>(null);
+  const [revenueData, setRevenueData] = useState<RevenueSummaryData | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [dashboard, forecast, util, recs] = await Promise.all([
+        const [dashboard, forecast, util, recs, revenue] = await Promise.all([
           fetch("/api/dashboard-data").then((r) => r.json()),
           fetch("/api/fleet-forecasting/forecast?days=7").then((r) => r.json()),
           fetch("/api/fleet-forecasting/utilization?days=30").then((r) =>
@@ -140,12 +231,14 @@ export default function DashboardPage() {
           fetch("/api/fleet-forecasting/recommendations?horizon=7").then((r) =>
             r.json(),
           ),
+          fetch("/api/revenue-forecasting?days=7").then((r) => r.json()),
         ]);
 
         setDashboardData(dashboard);
         setForecastData(forecast);
         setUtilizationData(util);
         setRecsData(recs);
+        setRevenueData(revenue);
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -262,13 +355,13 @@ export default function DashboardPage() {
         />
         <KPICard
           label="Shortage Risk"
-          value={shortageCount > 0 ? shortageCount : "—"}
+          value={shortageCount}
           subLabel={
             shortageCount > 0
               ? `${shortageHours.toFixed(1)} hours gap`
-              : "next 7 days"
+              : "no shortages next 7 days"
           }
-          accent={shortageCount > 0}
+          danger={shortageCount > 0}
         />
       </div>
 
@@ -286,17 +379,55 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {/* Revenue Forecast */}
           <Card>
-            <div className="mb-4">
-              <p className="text-sm font-semibold text-zinc-100">
-                Revenue Forecast
-              </p>
-              <p className="text-xs text-zinc-600">Next 7 days</p>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-zinc-100">
+                  Revenue Forecast
+                </p>
+                <p className="text-xs text-zinc-600">Next 7 days</p>
+              </div>
+              <Link
+                href="/revenue-forecasting"
+                className="text-xs text-emerald-400 hover:text-emerald-300"
+              >
+                Details →
+              </Link>
             </div>
-            <SparkChart />
-            <div className="mt-3 flex justify-between text-xs text-zinc-500">
-              <span>This week</span>
-              <span className="font-semibold text-emerald-400">↑ 12%</span>
-            </div>
+            {revenueData ? (
+              <>
+                <MiniRevenueChart
+                  historical={revenueData.historical_weekly}
+                  forecast={revenueData.forecast_weekly}
+                />
+                {(() => {
+                  const forecastRev = revenueData.total_forecast_revenue;
+                  const avgWkly = revenueData.avg_weekly_revenue;
+                  const delta =
+                    avgWkly > 0
+                      ? ((forecastRev - avgWkly) / avgWkly) * 100
+                      : null;
+                  const fmtRev = (n: number) =>
+                    n >= 1000 ? `$${Math.round(n / 1000)}k` : `$${n}`;
+                  return (
+                    <div className="mt-3 flex justify-between text-xs text-zinc-500">
+                      <span className="tabnum font-semibold text-zinc-200">
+                        {fmtRev(forecastRev)}
+                      </span>
+                      {delta !== null && (
+                        <span
+                          className={`font-semibold ${delta >= 0 ? "text-emerald-400" : "text-red-400"}`}
+                        >
+                          {delta >= 0 ? "↑" : "↓"} {Math.abs(delta).toFixed(0)}%
+                          vs avg
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </>
+            ) : (
+              <div className="h-12 w-full rounded bg-zinc-800/50" />
+            )}
           </Card>
 
           {/* Capacity Status */}
@@ -315,22 +446,23 @@ export default function DashboardPage() {
             <div className="space-y-2">
               {forecastData?.planes_needed?.slice(0, 3).map((plan, idx) => (
                 <div key={idx} className="flex items-center justify-between">
-                  <span className="text-xs text-zinc-600">
+                  <span className="text-xs text-zinc-400">
                     {plan.aircraft_category}
                   </span>
                   <span
-                    className={`text-xs font-semibold ${
+                    className={`rounded px-2 py-0.5 text-xs font-semibold ${
                       plan.status === "shortage"
-                        ? "text-red-400"
+                        ? "bg-red-900/40 text-red-400"
                         : plan.status === "surplus"
-                          ? "text-emerald-400"
-                          : "text-zinc-400"
+                          ? "bg-emerald-900/30 text-emerald-400"
+                          : "bg-zinc-800 text-zinc-400"
                     }`}
                   >
-                    {plan.status === "shortage" ? "⚠️" : "✓"}{" "}
-                    {plan.capacity_gap_aircraft > 0
-                      ? `+${plan.capacity_gap_aircraft}`
-                      : plan.capacity_gap_aircraft}
+                    {plan.status === "shortage"
+                      ? `Need +${plan.capacity_gap_aircraft} ac`
+                      : plan.status === "surplus"
+                        ? "Surplus"
+                        : "OK"}
                   </span>
                 </div>
               ))}
@@ -457,23 +589,23 @@ export default function DashboardPage() {
           <CardHeader className="px-5 pt-5 pb-4">
             <CardTitle>Top Actions</CardTitle>
             <Link
-              href="/fleet-forecasting"
+              href="/fleet-forecasting?tab=actions"
               className="text-xs text-emerald-400 hover:text-emerald-300"
             >
               View All →
             </Link>
           </CardHeader>
           <div className="space-y-2.5 px-5 pb-5">
-            {recsData?.reposition?.slice(0, 2).map((rec, idx) => (
+            {recsData?.recommendations?.slice(0, 2).map((s, idx) => (
               <div
                 key={idx}
                 className="rounded-md border border-emerald-900/30 bg-emerald-900/10 p-2.5"
               >
                 <p className="text-xs font-semibold text-emerald-400">
-                  {rec.aircraft_id}
+                  {s.rec.tail_number}
                 </p>
-                <p className="mt-0.5 text-xs text-zinc-600">
-                  → {rec.destination_icao}
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  {s.one_line_reason}
                 </p>
               </div>
             ))}

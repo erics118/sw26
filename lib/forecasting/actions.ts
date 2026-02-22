@@ -158,7 +158,7 @@ export async function generateRecommendations(
 
       if (!feasibilityPassed) continue;
 
-      const oneLineReason = `${ac.tail_number} idle ${ac.idle_days}d — ${ac.category} demand peak ${peakDate} (${peakHours.toFixed(1)}h forecast at ${bestDest})`;
+      const oneLineReason = `Reposition to ${bestDest} — ${ac.category} demand peaks ${peakDate}, aircraft idle ${ac.idle_days} days`;
 
       repositionRecs.push({
         type: "reposition",
@@ -202,7 +202,7 @@ export async function generateRecommendations(
 
       if (!feasibilityPassed) continue;
 
-      const oneLineReason = `${ac.tail_number} lowest demand window ${lowDate} — ${lowHours.toFixed(1)}h forecast`;
+      const oneLineReason = `Schedule maintenance on ${lowDate} — lowest demand window for ${ac.category} this week`;
 
       maintenanceRecs.push({
         type: "maintenance_window",
