@@ -20,3 +20,12 @@ export function formatFlightTime(hr: number): string {
   if (m === 0) return `${h} hr`;
   return `${h} hr ${m} min`;
 }
+
+/** Formats a number as currency (e.g. "$12,345"). No decimal places. */
+export function formatCurrency(n: number, currency = "USD") {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(n);
+}

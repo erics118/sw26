@@ -1,3 +1,5 @@
+import { formatCurrency as fmt } from "@/lib/format";
+
 interface LineItem {
   label: string;
   amount: number;
@@ -19,14 +21,6 @@ interface CostBreakdownProps {
   total: number;
   currency?: string;
   extraItems?: LineItem[];
-}
-
-function fmt(n: number, currency = "USD") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(n);
 }
 
 function Row({

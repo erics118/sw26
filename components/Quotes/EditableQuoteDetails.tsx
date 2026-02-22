@@ -17,6 +17,39 @@ interface EditableQuoteDetailsProps {
   createdAt: string;
 }
 
+function PencilIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+      strokeWidth={2}
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+      />
+    </svg>
+  );
+}
+
+function ReadOnlyRow({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex justify-between">
+      <span className="text-zinc-600">{label}</span>
+      {children}
+    </div>
+  );
+}
+
 function InlineNumberField({
   label,
   value,
@@ -32,6 +65,7 @@ function InlineNumberField({
   const [localValue, setLocalValue] = useState(String(value));
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
 
   useEffect(() => {
     if (!editing) setLocalValue(String(value));
@@ -42,6 +76,8 @@ function InlineNumberField({
   }, [editing]);
 
   const commit = useCallback(async () => {
+    if (committedRef.current) return;
+    committedRef.current = true;
     const num = parseFloat(localValue);
     if (isNaN(num) || num === value) {
       setEditing(false);
@@ -58,8 +94,7 @@ function InlineNumberField({
 
   if (editing) {
     return (
-      <div className="flex justify-between">
-        <span className="text-zinc-600">{label}</span>
+      <ReadOnlyRow label={label}>
         <div className="flex items-center gap-1">
           <input
             ref={inputRef}
@@ -67,6 +102,9 @@ function InlineNumberField({
             inputMode="decimal"
             value={localValue}
             onChange={(e) => setLocalValue(e.target.value)}
+            onFocus={() => {
+              committedRef.current = false;
+            }}
             onBlur={commit}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -84,13 +122,12 @@ function InlineNumberField({
           />
           {suffix && <span className="text-xs text-zinc-500">{suffix}</span>}
         </div>
-      </div>
+      </ReadOnlyRow>
     );
   }
 
   return (
-    <div className="flex justify-between">
-      <span className="text-zinc-600">{label}</span>
+    <ReadOnlyRow label={label}>
       <button
         type="button"
         onClick={() => setEditing(true)}
@@ -99,21 +136,9 @@ function InlineNumberField({
       >
         {value}
         {suffix}
-        <svg
-          className="h-3 w-3 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-          />
-        </svg>
+        <PencilIcon className="h-3 w-3 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100" />
       </button>
-    </div>
+    </ReadOnlyRow>
   );
 }
 
@@ -134,6 +159,7 @@ function InlineTextField({
   const [localValue, setLocalValue] = useState(value ?? "");
   const [saving, setSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const committedRef = useRef(false);
 
   useEffect(() => {
     if (!editing) setLocalValue(value ?? "");
@@ -149,6 +175,8 @@ function InlineTextField({
   }, [editing]);
 
   const commit = useCallback(async () => {
+    if (committedRef.current) return;
+    committedRef.current = true;
     const trimmed = localValue.trim();
     const newVal = trimmed || null;
     if (newVal === value) {
@@ -165,7 +193,7 @@ function InlineTextField({
   }, [localValue, value, onSave]);
 
   if (editing) {
-    const sharedClasses =
+    const inputClasses =
       "w-full rounded border border-amber-400/60 bg-zinc-800 px-2.5 py-1.5 text-sm text-zinc-200 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 focus:outline-none";
 
     return (
@@ -176,6 +204,9 @@ function InlineTextField({
             ref={inputRef as React.RefObject<HTMLTextAreaElement>}
             value={localValue}
             onChange={(e) => setLocalValue(e.target.value)}
+            onFocus={() => {
+              committedRef.current = false;
+            }}
             onBlur={commit}
             onKeyDown={(e) => {
               if (e.key === "Escape") {
@@ -190,7 +221,7 @@ function InlineTextField({
             disabled={saving}
             rows={3}
             placeholder={placeholder}
-            className={`${sharedClasses} resize-y`}
+            className={`${inputClasses} resize-y`}
             autoFocus
           />
         ) : (
@@ -199,6 +230,9 @@ function InlineTextField({
             type="text"
             value={localValue}
             onChange={(e) => setLocalValue(e.target.value)}
+            onFocus={() => {
+              committedRef.current = false;
+            }}
             onBlur={commit}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -212,12 +246,12 @@ function InlineTextField({
             }}
             disabled={saving}
             placeholder={placeholder}
-            className={sharedClasses}
+            className={inputClasses}
             autoFocus
           />
         )}
         {multiline && (
-          <p className="mt-1 text-[10px] text-zinc-600">⌘ Enter to save</p>
+          <p className="mt-1 text-[10px] text-zinc-600">Cmd+Enter to save</p>
         )}
       </div>
     );
@@ -237,19 +271,7 @@ function InlineTextField({
       >
         <span className="mb-1 flex items-center gap-1.5 text-zinc-600">
           {label}
-          <svg
-            className="h-3 w-3 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-            />
-          </svg>
+          <PencilIcon className="h-3 w-3 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100" />
         </span>
         <p className="text-sm leading-relaxed text-zinc-400">{displayValue}</p>
       </button>
@@ -257,8 +279,7 @@ function InlineTextField({
   }
 
   return (
-    <div className="flex justify-between">
-      <span className="text-zinc-600">{label}</span>
+    <ReadOnlyRow label={label}>
       <button
         type="button"
         onClick={() => setEditing(true)}
@@ -266,21 +287,9 @@ function InlineTextField({
         title={`Edit ${label.toLowerCase()}`}
       >
         <span className="text-sm">{displayValue}</span>
-        <svg
-          className="h-3 w-3 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-          />
-        </svg>
+        <PencilIcon className="h-3 w-3 text-zinc-600 opacity-0 transition-opacity group-hover:opacity-100" />
       </button>
-    </div>
+    </ReadOnlyRow>
   );
 }
 
@@ -340,16 +349,14 @@ export default function EditableQuoteDetails({
             onSave={async (val) => patchQuote({ margin_pct: val })}
           />
         ) : (
-          <div className="flex justify-between">
-            <span className="text-zinc-600">Margin</span>
+          <ReadOnlyRow label="Margin">
             <span className="tabnum text-zinc-300">{marginPct}%</span>
-          </div>
+          </ReadOnlyRow>
         )}
 
-        <div className="flex justify-between">
-          <span className="text-zinc-600">Version</span>
+        <ReadOnlyRow label="Version">
           <span className="tabnum text-zinc-300">v{version}</span>
-        </div>
+        </ReadOnlyRow>
 
         {!isTerminal ? (
           <InlineTextField
@@ -360,10 +367,9 @@ export default function EditableQuoteDetails({
           />
         ) : (
           brokerName && (
-            <div className="flex justify-between">
-              <span className="text-zinc-600">Broker</span>
+            <ReadOnlyRow label="Broker">
               <span className="text-zinc-300">{brokerName}</span>
-            </div>
+            </ReadOnlyRow>
           )
         )}
 
@@ -379,47 +385,42 @@ export default function EditableQuoteDetails({
               />
             )
           : brokerCommissionPct != null && (
-              <div className="flex justify-between">
-                <span className="text-zinc-600">Broker commission</span>
+              <ReadOnlyRow label="Broker commission">
                 <span className="tabnum text-zinc-300">
                   {brokerCommissionPct}%
                 </span>
-              </div>
+              </ReadOnlyRow>
             )}
 
         {quoteValidUntil && (
-          <div className="flex justify-between">
-            <span className="text-zinc-600">Valid until</span>
+          <ReadOnlyRow label="Valid until">
             <span className="text-xs text-zinc-500">
               {new Date(quoteValidUntil).toLocaleDateString()}
             </span>
-          </div>
+          </ReadOnlyRow>
         )}
 
         {estimatedTotalHours != null && (
-          <div className="flex justify-between">
-            <span className="text-zinc-600">Est. total hours</span>
+          <ReadOnlyRow label="Est. total hours">
             <span className="tabnum text-zinc-300">
               {estimatedTotalHours} hrs
             </span>
-          </div>
+          </ReadOnlyRow>
         )}
 
         {wonLostReason && status === "lost" && (
-          <div className="flex justify-between">
-            <span className="text-zinc-600">Lost reason</span>
+          <ReadOnlyRow label="Lost reason">
             <span className="text-zinc-300 capitalize">
               {wonLostReason.replace("_", " ")}
             </span>
-          </div>
+          </ReadOnlyRow>
         )}
 
-        <div className="flex justify-between">
-          <span className="text-zinc-600">Created</span>
+        <ReadOnlyRow label="Created">
           <span className="text-xs text-zinc-500">
             {new Date(createdAt).toLocaleDateString()}
           </span>
-        </div>
+        </ReadOnlyRow>
       </div>
 
       {error && (
