@@ -67,7 +67,6 @@ export async function GET() {
       openQuotes: openQuotesCount,
       confirmedThisWeek: confirmedThisWeekCount,
       todayTrips: todayTripsCount,
-      emptyLegRatio: "34%",
       recentQuotes: quotes?.slice(0, 8) ?? [],
       recommendedTrips: trips ?? [],
       activeTrips: trips ?? [],

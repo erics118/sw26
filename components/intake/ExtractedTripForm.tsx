@@ -10,8 +10,6 @@ interface Props {
   onUpdateLeg: (idx: number, field: keyof TripLeg, value: string) => void;
   onSave: () => void;
   saving: boolean;
-  onGenerate?: () => void;
-  generating?: boolean;
 }
 
 export default function ExtractedTripForm({
@@ -21,8 +19,6 @@ export default function ExtractedTripForm({
   onUpdateLeg,
   onSave,
   saving,
-  onGenerate,
-  generating,
 }: Props) {
   return (
     <div className="slide-in space-y-4">
@@ -271,17 +267,6 @@ export default function ExtractedTripForm({
         >
           Save Trip & Build Quote →
         </Button>
-        {onGenerate && (
-          <Button
-            onClick={onGenerate}
-            loading={generating}
-            variant="secondary"
-            size="lg"
-            className="flex-1 justify-center"
-          >
-            Generate Quote with AI →
-          </Button>
-        )}
       </div>
     </div>
   );
