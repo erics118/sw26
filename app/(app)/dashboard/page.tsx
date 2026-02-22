@@ -31,7 +31,6 @@ type DashboardData = {
   openQuotes: number;
   confirmedThisWeek: number;
   todayTrips: number;
-  emptyLegRatio: string;
   recentQuotes: QuoteRow[];
   recommendedTrips: TripRow[];
   activeTrips: TripRow[];
@@ -64,10 +63,6 @@ type RecommendationData = {
   reposition?: Array<{
     aircraft_id: string;
     destination_icao: string;
-  }>;
-  empty_leg?: Array<{
-    aircraft_id: string;
-    discount_pct: number;
   }>;
 };
 
@@ -479,19 +474,6 @@ export default function DashboardPage() {
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-600">
                   → {rec.destination_icao}
-                </p>
-              </div>
-            ))}
-            {recsData?.empty_leg?.slice(0, 1).map((leg, idx) => (
-              <div
-                key={`el-${idx}`}
-                className="rounded-md border border-amber-900/30 bg-amber-900/10 p-2.5"
-              >
-                <p className="text-xs font-semibold text-amber-400">
-                  {leg.aircraft_id} - Empty Leg
-                </p>
-                <p className="mt-0.5 text-xs text-zinc-600">
-                  {Math.round(leg.discount_pct)}% discount
                 </p>
               </div>
             ))}

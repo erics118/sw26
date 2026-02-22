@@ -393,12 +393,6 @@ export default function FleetForecastingPage() {
                               </Badge>
                             ))
                           )}
-                          {ac.deadhead_waste_score > 0.15 && (
-                            <Badge variant="yellow">
-                              {(ac.deadhead_waste_score * 100).toFixed(0)}%
-                              empty repositions
-                            </Badge>
-                          )}
                         </div>
                       </td>
                     </tr>
