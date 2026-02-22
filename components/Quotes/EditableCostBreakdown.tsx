@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 interface EditableCostBreakdownProps {
@@ -30,6 +30,71 @@ function fmt(n: number, currency = "USD") {
   }).format(n);
 }
 
+function CurrencyInput({
+  value,
+  onChange,
+  currency,
+}: {
+  value: number;
+  onChange: (val: number) => void;
+  currency: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [localValue, setLocalValue] = useState(String(value));
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const enterEdit = useCallback(() => {
+    setLocalValue(String(value));
+    setFocused(true);
+  }, [value]);
+
+  const commit = useCallback(() => {
+    const cleaned = localValue.replace(/[^0-9.-]/g, "");
+    const num = parseFloat(cleaned) || 0;
+    const clamped = Math.max(0, Math.round(num));
+    onChange(clamped);
+    setLocalValue(String(clamped));
+    setFocused(false);
+  }, [localValue, onChange]);
+
+  return (
+    <div className="relative">
+      {focused ? (
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="numeric"
+          value={localValue}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              commit();
+              inputRef.current?.blur();
+            }
+            if (e.key === "Escape") {
+              setLocalValue(String(value));
+              setFocused(false);
+              inputRef.current?.blur();
+            }
+          }}
+          className="w-32 rounded border border-amber-400/60 bg-zinc-800 px-2.5 py-1 text-right font-mono text-sm text-amber-400 focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 focus:outline-none"
+          autoFocus
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={enterEdit}
+          className="w-32 cursor-text rounded border border-zinc-700 bg-zinc-800/60 px-2.5 py-1 text-right font-mono text-sm text-amber-400 transition-colors hover:border-zinc-500 hover:bg-zinc-800"
+        >
+          {fmt(value, currency)}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export default function EditableCostBreakdown({
   quoteId,
   fuelCost: initialFuelCost,
@@ -45,10 +110,13 @@ export default function EditableCostBreakdown({
   isEditable,
 }: EditableCostBreakdownProps) {
   const router = useRouter();
+  const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
 
-  // Local editable state
   const [fuelCost, setFuelCost] = useState(initialFuelCost);
   const [fboFees, setFboFees] = useState(initialFboFees);
   const [repositioningCost, setRepositioningCost] = useState(
@@ -63,7 +131,6 @@ export default function EditableCostBreakdown({
     initialPeakDaySurcharge,
   );
 
-  // Calculate totals dynamically
   const subtotal =
     fuelCost +
     fboFees +
@@ -73,65 +140,99 @@ export default function EditableCostBreakdown({
     cateringCost +
     peakDaySurcharge;
   const marginAmount = (subtotal * marginPct) / 100;
-  const tax = 0; // Simplified - can be enhanced
+  const tax = 0;
   const total = subtotal + marginAmount + tax;
+
+  const isDirty =
+    fuelCost !== initialFuelCost ||
+    fboFees !== initialFboFees ||
+    repositioningCost !== initialRepositioningCost ||
+    permitFees !== initialPermitFees ||
+    crewOvernightCost !== initialCrewOvernightCost ||
+    cateringCost !== initialCateringCost ||
+    peakDaySurcharge !== initialPeakDaySurcharge;
 
   const formatCurrency = (value: number) => fmt(value, currency);
 
-  const handleInputChange = (value: string, setter: (val: number) => void) => {
-    const num = parseFloat(value) || 0;
-    setter(Math.max(0, num));
-  };
+  const buildCostsPayload = () => ({
+    fuel_cost: fuelCost,
+    fbo_fees: fboFees,
+    repositioning_cost: repositioningCost,
+    repositioning_hours: repositioningHours,
+    permit_fees: permitFees,
+    crew_overnight_cost: crewOvernightCost,
+    catering_cost: cateringCost,
+    peak_day_surcharge: peakDaySurcharge,
+    subtotal,
+    margin_amount: marginAmount,
+    tax,
+    total,
+  });
+
+  async function handleSaveCosts() {
+    setSaving(true);
+    setFeedback(null);
+    try {
+      const res = await fetch(`/api/quotes/${quoteId}/costs`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildCostsPayload()),
+      });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? "Failed to save costs");
+      }
+      setFeedback({ type: "success", message: "Costs saved" });
+      router.refresh();
+    } catch (e) {
+      setFeedback({
+        type: "error",
+        message: e instanceof Error ? e.message : "Save failed",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function handleSendQuote() {
     setSending(true);
-    setError("");
-
+    setFeedback(null);
     try {
-      // Update quote_costs
       const costsRes = await fetch(`/api/quotes/${quoteId}/costs`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fuel_cost: fuelCost,
-          fbo_fees: fboFees,
-          repositioning_cost: repositioningCost,
-          repositioning_hours: repositioningHours,
-          permit_fees: permitFees,
-          crew_overnight_cost: crewOvernightCost,
-          catering_cost: cateringCost,
-          peak_day_surcharge: peakDaySurcharge,
-          subtotal,
-          margin_amount: marginAmount,
-          tax,
-          total,
-        }),
+        body: JSON.stringify(buildCostsPayload()),
       });
-
       if (!costsRes.ok) {
         const data = (await costsRes.json()) as { error?: string };
         throw new Error(data.error ?? "Failed to save costs");
       }
-
-      // Update quote status to "sent"
       const quoteRes = await fetch(`/api/quotes/${quoteId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: "sent" }),
       });
-
       if (!quoteRes.ok) {
         const data = (await quoteRes.json()) as { error?: string };
         throw new Error(data.error ?? "Failed to send quote");
       }
-
       router.refresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to send quote");
+      setFeedback({
+        type: "error",
+        message: e instanceof Error ? e.message : "Send failed",
+      });
     } finally {
       setSending(false);
     }
   }
+
+  useEffect(() => {
+    if (feedback?.type === "success") {
+      const t = setTimeout(() => setFeedback(null), 2500);
+      return () => clearTimeout(t);
+    }
+  }, [feedback]);
 
   const EditableRow = ({
     label,
@@ -145,18 +246,14 @@ export default function EditableCostBreakdown({
     showZero?: boolean;
   }) => {
     if (value === 0 && !showZero && !isEditable) return null;
-
     return (
       <div className="flex items-center justify-between py-1.5">
         <span className="text-sm text-zinc-400">{label}</span>
         {isEditable && onChange ? (
-          <input
-            type="number"
+          <CurrencyInput
             value={value}
-            onChange={(e) => handleInputChange(e.target.value, onChange)}
-            min="0"
-            step="100"
-            className="w-32 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-right font-mono text-sm text-amber-400 placeholder-zinc-600 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 focus:outline-none"
+            onChange={onChange}
+            currency={currency}
           />
         ) : (
           <span className="tabnum text-sm text-zinc-300">
@@ -167,6 +264,8 @@ export default function EditableCostBreakdown({
     );
   };
 
+  const busy = saving || sending;
+
   return (
     <div className="space-y-4">
       <div className="space-y-0.5">
@@ -174,7 +273,7 @@ export default function EditableCostBreakdown({
           label="Fuel"
           value={fuelCost}
           onChange={setFuelCost}
-          showZero={true}
+          showZero
         />
         <EditableRow label="FBO Fees" value={fboFees} onChange={setFboFees} />
         <EditableRow
@@ -204,13 +303,24 @@ export default function EditableCostBreakdown({
         />
 
         <div className="mt-2 border-t border-zinc-800 pt-2">
-          <EditableRow label="Subtotal" value={subtotal} showZero={true} />
-          <EditableRow
-            label={`Margin (${marginPct}%)`}
-            value={marginAmount}
-            showZero={true}
-          />
-          <EditableRow label="Tax" value={tax} showZero={true} />
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-sm text-zinc-600">Subtotal</span>
+            <span className="tabnum text-sm text-zinc-500">
+              {formatCurrency(subtotal)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-sm text-zinc-600">Margin ({marginPct}%)</span>
+            <span className="tabnum text-sm text-zinc-500">
+              {formatCurrency(marginAmount)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between py-1.5">
+            <span className="text-sm text-zinc-600">Tax</span>
+            <span className="tabnum text-sm text-zinc-500">
+              {formatCurrency(tax)}
+            </span>
+          </div>
         </div>
 
         <div className="flex items-center justify-between py-2 pt-3">
@@ -222,18 +332,34 @@ export default function EditableCostBreakdown({
       </div>
 
       {isEditable && (
-        <div className="flex gap-3 border-t border-zinc-800 pt-4">
-          <button
-            onClick={handleSendQuote}
-            disabled={sending}
-            className="flex-1 rounded-md bg-amber-400 px-4 py-2 font-semibold text-zinc-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {sending ? "Sending..." : "Send Quote"}
-          </button>
-          {error && (
-            <span className="flex items-center text-xs text-red-400">
-              {error}
-            </span>
+        <div className="space-y-3 border-t border-zinc-800 pt-4">
+          {isDirty && (
+            <p className="text-xs text-amber-400/80">Unsaved changes</p>
+          )}
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleSaveCosts}
+              disabled={busy || !isDirty}
+              className="rounded-md border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-300 transition-colors hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {saving ? "Saving…" : "Save Costs"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSendQuote}
+              disabled={busy}
+              className="flex-1 rounded-md bg-amber-400 px-4 py-2 font-semibold text-zinc-950 transition-colors hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {sending ? "Sending…" : "Save & Send Quote"}
+            </button>
+          </div>
+          {feedback && (
+            <p
+              className={`text-xs ${feedback.type === "success" ? "text-emerald-400" : "text-red-400"}`}
+            >
+              {feedback.message}
+            </p>
           )}
         </div>
       )}

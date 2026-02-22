@@ -14,37 +14,35 @@ import { addDays, formatDate } from "./utils";
 // Cost estimate: $500/hour for reposition (rough default)
 const REPOSITION_COST_PER_HOUR = 500;
 
-/**
- * Checks whether an aircraft is available (no maintenance block or confirmed booking)
- * during the given window.
- */
-async function validateFeasibility(
-  supabase: SupabaseClient<Database>,
-  aircraft_id: string,
+type MaintenanceBlock = {
+  aircraft_id: string;
+  start_time: string;
+  end_time: string;
+};
+
+type ConfirmedBooking = {
+  aircraft_id: string;
+  scheduled_departure_time: string;
+};
+
+function checkFeasibility(
+  aircraftId: string,
   windowStart: Date,
   windowEnd: Date,
-): Promise<boolean> {
-  // Check 1: no maintenance block overlapping the window
-  const { data: blocks } = await supabase
-    .from("aircraft_maintenance")
-    .select("id")
-    .eq("aircraft_id", aircraft_id)
-    .lte("start_time", windowEnd.toISOString())
-    .gte("end_time", windowStart.toISOString())
-    .limit(1);
-  if (blocks && blocks.length > 0) return false;
-
-  // Check 2: no confirmed quote already occupying the window
-  const { data: booked } = await supabase
-    .from("quotes")
-    .select("id")
-    .eq("aircraft_id", aircraft_id)
-    .in("status", ["confirmed"])
-    .lte("scheduled_departure_time", windowEnd.toISOString())
-    .gte("scheduled_departure_time", windowStart.toISOString())
-    .limit(1);
-  if (booked && booked.length > 0) return false;
-
+  maintenanceByAircraft: Map<string, MaintenanceBlock[]>,
+  bookingsByAircraft: Map<string, ConfirmedBooking[]>,
+): boolean {
+  for (const b of maintenanceByAircraft.get(aircraftId) ?? []) {
+    if (
+      new Date(b.start_time) <= windowEnd &&
+      new Date(b.end_time) >= windowStart
+    )
+      return false;
+  }
+  for (const b of bookingsByAircraft.get(aircraftId) ?? []) {
+    const dep = new Date(b.scheduled_departure_time);
+    if (dep >= windowStart && dep <= windowEnd) return false;
+  }
   return true;
 }
 
@@ -69,6 +67,10 @@ export async function generateRecommendations(
   const today = new Date();
   const futureEnd = addDays(today, horizonDays);
 
+  const candidateIds = underutilizedAircraft
+    .filter((ac) => ac.flags.includes("underutilized"))
+    .map((ac) => ac.aircraft_id);
+
   // Build demand lookup: category → date → expected_hours
   const demandMap: Record<string, Record<string, number>> = {};
   for (const d of forecastDemand) {
@@ -77,12 +79,52 @@ export async function generateRecommendations(
       d.expected_total_hours;
   }
 
-  // Find top-demand destinations from historical confirmed quotes
-  const { data: historicalQuotes } = await supabase
-    .from("quotes")
-    .select("chosen_aircraft_category, aircraft_id, trips(legs)")
-    .in("status", ["confirmed", "completed"])
-    .gte("created_at", addDays(today, -90).toISOString());
+  // Bulk-fetch feasibility data + historical quotes in parallel (2 queries instead of N×2)
+  const horizonWindowEnd = addDays(futureEnd, 1);
+
+  const [
+    { data: historicalQuotes },
+    { data: maintenanceRows },
+    { data: bookingRows },
+  ] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select("chosen_aircraft_category, aircraft_id, trips(legs)")
+      .in("status", ["confirmed", "completed"])
+      .gte("created_at", addDays(today, -90).toISOString()),
+    candidateIds.length > 0
+      ? supabase
+          .from("aircraft_maintenance")
+          .select("aircraft_id, start_time, end_time")
+          .in("aircraft_id", candidateIds)
+          .lte("start_time", horizonWindowEnd.toISOString())
+          .gte("end_time", today.toISOString())
+      : Promise.resolve({ data: [] as MaintenanceBlock[] }),
+    candidateIds.length > 0
+      ? supabase
+          .from("quotes")
+          .select("aircraft_id, scheduled_departure_time")
+          .in("aircraft_id", candidateIds)
+          .in("status", ["confirmed"])
+          .not("scheduled_departure_time", "is", null)
+          .lte("scheduled_departure_time", horizonWindowEnd.toISOString())
+          .gte("scheduled_departure_time", today.toISOString())
+      : Promise.resolve({ data: [] as ConfirmedBooking[] }),
+  ]);
+
+  const maintenanceByAircraft = new Map<string, MaintenanceBlock[]>();
+  for (const row of (maintenanceRows ?? []) as MaintenanceBlock[]) {
+    const list = maintenanceByAircraft.get(row.aircraft_id) ?? [];
+    list.push(row);
+    maintenanceByAircraft.set(row.aircraft_id, list);
+  }
+
+  const bookingsByAircraft = new Map<string, ConfirmedBooking[]>();
+  for (const row of (bookingRows ?? []) as ConfirmedBooking[]) {
+    const list = bookingsByAircraft.get(row.aircraft_id) ?? [];
+    list.push(row);
+    bookingsByAircraft.set(row.aircraft_id, list);
+  }
 
   // Build airport demand score: airport → count of confirmed flights arriving there
   const airportScore: Record<string, number> = {};
@@ -148,12 +190,12 @@ export async function generateRecommendations(
       const recommendedDepartureTime = new Date(peakDate + "T08:00:00Z");
       const windowEnd = addDays(recommendedDepartureTime, 1);
 
-      // Feasibility check
-      const feasibilityPassed = await validateFeasibility(
-        supabase,
+      const feasibilityPassed = checkFeasibility(
         ac.aircraft_id,
         recommendedDepartureTime,
         windowEnd,
+        maintenanceByAircraft,
+        bookingsByAircraft,
       );
 
       if (!feasibilityPassed) continue;
@@ -192,12 +234,12 @@ export async function generateRecommendations(
       const suggestedStart = new Date(lowDate + "T06:00:00Z");
       const suggestedEnd = new Date(lowDate + "T18:00:00Z");
 
-      // Feasibility check
-      const feasibilityPassed = await validateFeasibility(
-        supabase,
+      const feasibilityPassed = checkFeasibility(
         ac.aircraft_id,
         suggestedStart,
         suggestedEnd,
+        maintenanceByAircraft,
+        bookingsByAircraft,
       );
 
       if (!feasibilityPassed) continue;
