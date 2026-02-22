@@ -91,6 +91,24 @@ const nav = [
     ),
   },
   {
+    href: "/crew",
+    label: "Crew",
+    icon: (
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.75"
+      >
+        <circle cx="12" cy="8" r="3" />
+        <path d="M5 21v-1a7 7 0 0114 0v1" />
+        <path d="M9 8h-.5a2.5 2.5 0 000 5H9M15 8h.5a2.5 2.5 0 010 5H15" />
+      </svg>
+    ),
+  },
+  {
     href: "/fleet-forecasting",
     label: "Fleet Forecast",
     icon: (
