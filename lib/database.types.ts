@@ -60,6 +60,9 @@ export interface Database {
           etops_certified: boolean;
           max_payload_lbs: number | null;
           reserve_fuel_gal: number | null;
+          // Added by migration 002_aircraft_location
+          current_location_icao: string | null;
+          location_updated_at: string | null;
         };
         Insert: {
           id?: string;
@@ -82,6 +85,8 @@ export interface Database {
           etops_certified?: boolean;
           max_payload_lbs?: number | null;
           reserve_fuel_gal?: number | null;
+          current_location_icao?: string | null;
+          location_updated_at?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["aircraft"]["Insert"]>;
         Relationships: [];

@@ -53,6 +53,8 @@ export const AircraftSchema = z.object({
   etops_certified: z.boolean().default(false),
   max_payload_lbs: z.number().positive().nullable().optional(),
   reserve_fuel_gal: z.number().positive().nullable().optional(),
+  current_location_icao: z.string().length(4).nullable().optional(),
+  location_updated_at: z.string().nullable().optional(),
 });
 
 export const CreateAircraftSchema = AircraftSchema.omit({

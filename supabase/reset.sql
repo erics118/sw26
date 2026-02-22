@@ -64,7 +64,10 @@ create table aircraft (
   min_runway_ft integer,
   etops_certified boolean default false,
   max_payload_lbs numeric(8,1),
-  reserve_fuel_gal numeric(6,1)
+  reserve_fuel_gal numeric(6,1),
+  -- migration 002_aircraft_location
+  current_location_icao text,               -- where the aircraft currently is (ICAO)
+  location_updated_at timestamptz           -- when the location was last updated
 );
 
 create table crew (
@@ -306,17 +309,17 @@ create policy "staff_all" on route_plans              for all using (auth.role()
 -- ── Aircraft ─────────────────────────────────────────────────────────────────
 -- created_at: when added to fleet (staggered 2020–2024 for realistic history)
 
-insert into aircraft (id, created_at, tail_number, category, range_nm, cabin_height_in, pax_capacity, fuel_burn_gph, has_wifi, has_bathroom, home_base_icao, notes, status, daily_available_hours, cruise_speed_kts, max_fuel_capacity_gal, min_runway_ft, etops_certified, max_payload_lbs, reserve_fuel_gal) values
-  ('2a7f4c1e-8b3d-4f6a-9c2e-5d1b7a3f9e4c', '2021-06-15 10:00:00+00', 'N114PC', 'turboprop',  1845, 59.0,  8,  74.0, false, true,  'KVNY', 'Pilatus PC-12 NGX — 2021, workhorse short-haul, no wifi',  'active', 8, 270, 332.0, 2500, false, 3500.0, 55.5),
-  ('6e3b9d5f-1c4a-4b7d-8e2f-3a9c6b1d4e7f', '2020-03-01 09:00:00+00', 'N388CJ', 'light',      2040, 57.5,  6,  96.0, false, false, 'KBUR', 'Citation CJ3 — 2014, no lavatory, ideal for quick hops',   'active', 8, 420, 1620.0, 3200, false, 2800.0, 72.0),
-  ('4c1d8f6a-7e2b-4d9c-a5f3-8b4e1c7d2f9a', '2022-08-20 14:00:00+00', 'N512PE', 'light',      2267, 59.0,  7, 103.0, true,  false, 'KLAS', 'Phenom 300E — 2022, Gogo Avance wifi, enclosed lav',       'active', 8, 450, 1840.0, 3500, false, 3200.0, 77.3),
-  ('8b5e2f9c-3d7a-4e1b-b6c4-2f8a5d3e7c1b', '2021-01-10 11:00:00+00', 'N744XL', 'midsize',    2100, 68.5,  9, 211.0, true,  true,  'KLAX', 'Citation XLS+ — 2019, full galley, ForeFlight avionics',   'active', 8, 470, 3850.0, 4500, false, 4500.0, 158.3),
-  ('1f9c4a7e-6b2d-4c8f-a3e5-7d1f9c4a6b2e', '2019-11-05 08:00:00+00', 'N291HK', 'midsize',    2540, 72.0,  8, 230.0, false, true,  'KTEB', 'Hawker 800XP — 2007, classic interior, reliable but no wifi', 'active', 8, 450, 4200.0, 5000, false, 5000.0, 172.5),
-  ('5a2d7f1c-9e4b-4a6d-8c1f-3b7a5d2f9c4e', '2021-12-01 16:00:00+00', 'N603LA', 'midsize',    2700, 72.0,  9, 218.0, true,  true,  'KMDW', 'Citation Latitude — 2021, flat-floor, dual-zone cabin',    'active', 8, 485, 4200.0, 4500, false, 5500.0, 163.5),
-  ('9c6f3a4d-2e8b-4d1c-b7f5-4a9c2e6f8d1b', '2023-09-15 10:30:00+00', 'N177CR', 'super-mid',  3200, 73.8, 10, 253.0, true,  true,  'KORD', 'Challenger 350 — 2023, Ka-band wifi, lie-flat seats',      'active', 8, 450, 5400.0, 5500, false, 6500.0, 189.8),
-  ('3d1b8e5f-7c2a-4f9b-a4d6-1e3f7c9b5a2d', '2020-07-20 09:00:00+00', 'N830GV', 'heavy',      4350, 74.5, 14, 338.0, true,  true,  'KMIA', 'Gulfstream G450 — 2016, full galley, entertainment suite', 'active', 8, 488, 7200.0, 5500, true, 8500.0, 253.5),
-  ('7f4a2c9e-1d6b-4e3f-9a7c-5b2e8f4a1d6c', '2021-04-12 13:00:00+00', 'N495CL', 'heavy',      4000, 73.5, 12, 295.0, true,  true,  'KJFK', 'Challenger 605 — 2018, club seating + divan, dual-zone',   'active', 8, 450, 6300.0, 5500, false, 7500.0, 221.3),
-  ('1b6d4e8f-5c3a-4b7d-8e2f-9c1b6d4e5f3a', '2022-11-01 08:00:00+00', 'N741GX', 'ultra-long', 7500, 77.0, 16, 412.0, true,  true,  'KBOS', 'Gulfstream G650ER — 2022, flagship, transatlantic range',  'active', 8, 516, 10100.0, 6000, true, 12000.0, 309.0);
+insert into aircraft (id, created_at, tail_number, category, range_nm, cabin_height_in, pax_capacity, fuel_burn_gph, has_wifi, has_bathroom, home_base_icao, notes, status, daily_available_hours, cruise_speed_kts, max_fuel_capacity_gal, min_runway_ft, etops_certified, max_payload_lbs, reserve_fuel_gal, current_location_icao, location_updated_at) values
+  ('2a7f4c1e-8b3d-4f6a-9c2e-5d1b7a3f9e4c', '2021-06-15 10:00:00+00', 'N114PC', 'turboprop',  1845, 59.0,  8,  74.0, false, true,  'KVNY', 'Pilatus PC-12 NGX — 2021, workhorse short-haul, no wifi',  'active', 8, 270, 332.0, 2500, false, 3500.0, 55.5,  'KLAS', now() - interval '3 hours'),
+  ('6e3b9d5f-1c4a-4b7d-8e2f-3a9c6b1d4e7f', '2020-03-01 09:00:00+00', 'N388CJ', 'light',      2040, 57.5,  6,  96.0, false, false, 'KBUR', 'Citation CJ3 — 2014, no lavatory, ideal for quick hops',   'active', 8, 420, 1620.0, 3200, false, 2800.0, 72.0,  'KSNA', now() - interval '1 hour'),
+  ('4c1d8f6a-7e2b-4d9c-a5f3-8b4e1c7d2f9a', '2022-08-20 14:00:00+00', 'N512PE', 'light',      2267, 59.0,  7, 103.0, true,  false, 'KLAS', 'Phenom 300E — 2022, Gogo Avance wifi, enclosed lav',       'active', 8, 450, 1840.0, 3500, false, 3200.0, 77.3,  'KSFO', now() - interval '5 hours'),
+  ('8b5e2f9c-3d7a-4e1b-b6c4-2f8a5d3e7c1b', '2021-01-10 11:00:00+00', 'N744XL', 'midsize',    2100, 68.5,  9, 211.0, true,  true,  'KLAX', 'Citation XLS+ — 2019, full galley, ForeFlight avionics',   'active', 8, 470, 3850.0, 4500, false, 4500.0, 158.3, 'KTEB', now() - interval '2 hours'),
+  ('1f9c4a7e-6b2d-4c8f-a3e5-7d1f9c4a6b2e', '2019-11-05 08:00:00+00', 'N291HK', 'midsize',    2540, 72.0,  8, 230.0, false, true,  'KTEB', 'Hawker 800XP — 2007, classic interior, reliable but no wifi', 'active', 8, 450, 4200.0, 5000, false, 5000.0, 172.5, 'KORD', now() - interval '4 hours'),
+  ('5a2d7f1c-9e4b-4a6d-8c1f-3b7a5d2f9c4e', '2021-12-01 16:00:00+00', 'N603LA', 'midsize',    2700, 72.0,  9, 218.0, true,  true,  'KMDW', 'Citation Latitude — 2021, flat-floor, dual-zone cabin',    'active', 8, 485, 4200.0, 4500, false, 5500.0, 163.5, 'KMIA', now() - interval '6 hours'),
+  ('9c6f3a4d-2e8b-4d1c-b7f5-4a9c2e6f8d1b', '2023-09-15 10:30:00+00', 'N177CR', 'super-mid',  3200, 73.8, 10, 253.0, true,  true,  'KORD', 'Challenger 350 — 2023, Ka-band wifi, lie-flat seats',      'active', 8, 450, 5400.0, 5500, false, 6500.0, 189.8, 'KDFW', now() - interval '2 hours'),
+  ('3d1b8e5f-7c2a-4f9b-a4d6-1e3f7c9b5a2d', '2020-07-20 09:00:00+00', 'N830GV', 'heavy',      4350, 74.5, 14, 338.0, true,  true,  'KMIA', 'Gulfstream G450 — 2016, full galley, entertainment suite', 'active', 8, 488, 7200.0, 5500, true, 8500.0, 253.5,  'KTEB', now() - interval '7 hours'),
+  ('7f4a2c9e-1d6b-4e3f-9a7c-5b2e8f4a1d6c', '2021-04-12 13:00:00+00', 'N495CL', 'heavy',      4000, 73.5, 12, 295.0, true,  true,  'KJFK', 'Challenger 605 — 2018, club seating + divan, dual-zone',   'active', 8, 450, 6300.0, 5500, false, 7500.0, 221.3, 'KLAX', now() - interval '9 hours'),
+  ('1b6d4e8f-5c3a-4b7d-8e2f-9c1b6d4e5f3a', '2022-11-01 08:00:00+00', 'N741GX', 'ultra-long', 7500, 77.0, 16, 412.0, true,  true,  'KBOS', 'Gulfstream G650ER — 2022, flagship, transatlantic range',  'active', 8, 516, 10100.0, 6000, true, 12000.0, 309.0, 'EGLL', now() - interval '1 hour');
 
 -- ── Clients ───────────────────────────────────────────────────────────────────
 -- created_at: when onboarded (staggered 2023–2024)

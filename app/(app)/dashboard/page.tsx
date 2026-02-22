@@ -71,6 +71,16 @@ type RecommendationData = {
   }>;
 };
 
+type AircraftLocation = {
+  id: string;
+  tail_number: string;
+  category: string;
+  home_base_icao: string | null;
+  current_location_icao: string | null;
+  location_updated_at: string | null;
+  status: string;
+};
+
 function KPICard({
   label,
   value,
@@ -131,12 +141,15 @@ export default function DashboardPage() {
   const [utilizationData, setUtilizationData] =
     useState<UtilizationData | null>(null);
   const [recsData, setRecsData] = useState<RecommendationData | null>(null);
+  const [aircraftLocations, setAircraftLocations] = useState<
+    AircraftLocation[]
+  >([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [dashboard, forecast, util, recs] = await Promise.all([
+        const [dashboard, forecast, util, recs, aircraft] = await Promise.all([
           fetch("/api/dashboard-data").then((r) => r.json()),
           fetch("/api/fleet-forecasting/forecast?days=7").then((r) => r.json()),
           fetch("/api/fleet-forecasting/utilization?days=30").then((r) =>
@@ -145,12 +158,18 @@ export default function DashboardPage() {
           fetch("/api/fleet-forecasting/recommendations?horizon=7").then((r) =>
             r.json(),
           ),
+          fetch("/api/aircraft").then((r) => r.json()),
         ]);
 
         setDashboardData(dashboard);
         setForecastData(forecast);
         setUtilizationData(util);
         setRecsData(recs);
+        setAircraftLocations(
+          Array.isArray(aircraft)
+            ? aircraft.filter((a: AircraftLocation) => a.status === "active")
+            : [],
+        );
       } catch (error) {
         console.error("Failed to fetch dashboard data:", error);
       } finally {
@@ -396,6 +415,66 @@ export default function DashboardPage() {
           </Card>
         </div>
       </div>
+
+      {/* Fleet Locations */}
+      {aircraftLocations.length > 0 && (
+        <div className="mb-6">
+          <p className="mb-3 text-xs font-semibold tracking-widest text-zinc-600 uppercase">
+            Fleet Locations
+          </p>
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/50 backdrop-blur">
+            <div className="grid grid-cols-5 divide-x divide-zinc-800">
+              {aircraftLocations.map((ac) => {
+                const atBase =
+                  ac.current_location_icao === ac.home_base_icao ||
+                  !ac.current_location_icao;
+                const updatedAt = ac.location_updated_at
+                  ? new Date(ac.location_updated_at).toLocaleTimeString(
+                      "en-US",
+                      { hour: "2-digit", minute: "2-digit" },
+                    )
+                  : null;
+                return (
+                  <div key={ac.id} className="p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs font-bold text-zinc-100">
+                        {ac.tail_number}
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${
+                          atBase
+                            ? "bg-zinc-800 text-zinc-500"
+                            : "bg-emerald-900/30 text-emerald-400"
+                        }`}
+                      >
+                        {atBase ? "at base" : "deployed"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="font-mono text-zinc-400">
+                        {ac.home_base_icao ?? "—"}
+                      </span>
+                      <span className="text-zinc-700">→</span>
+                      <span
+                        className={`font-mono font-semibold ${
+                          atBase ? "text-zinc-500" : "text-emerald-400"
+                        }`}
+                      >
+                        {ac.current_location_icao ?? ac.home_base_icao ?? "—"}
+                      </span>
+                    </div>
+                    {updatedAt && (
+                      <p className="mt-1.5 text-[10px] text-zinc-700">
+                        updated {updatedAt}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Row: Quotes, Recommendations, Aircraft Insights */}
       <div className="grid grid-cols-3 gap-6">
