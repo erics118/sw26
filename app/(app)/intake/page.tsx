@@ -45,17 +45,18 @@ interface IntakeResult {
   };
 }
 
-const SAMPLE = `Hi, I need to charter a flight for our team.
+const SAMPLE = `Hey — need a charter for next Thursday, the 26th. Flying 6 of us from
+Teterboro (TEB) down to Palm Beach (PBI), wheels up around 9am.
+Then returning Sunday evening, preferably before 8pm.
 
-We're looking at flying from Los Angeles (LAX) to New York (JFK) on June 15th, departing around 2pm.
-It'll be 4 passengers total — all adults. We'd love a mid-size jet if possible, wifi is a must.
+One passenger is our managing partner so we need a larger cabin —
+definitely need WiFi both ways and light catering on the outbound leg.
+We have about 8 bags total.
 
-Our CEO may want to return on June 17th in the evening.
+Client is James Harrington from Meridian Ventures, james@meridianvc.com,
++1 (212) 555-0174. He's flown with us before.
 
-We'll have quite a bit of luggage — 6 checked bags. No special dietary needs but would appreciate
-light catering. Flexible by ±2 hours on departure.
-
-Contact: James Whitfield, james@acmecorp.com, +1 (310) 555-0192, Acme Corp`;
+Flexible by an hour either way on departure if needed.`;
 
 export default function IntakePage() {
   const [rawText, setRawText] = useState("");
@@ -63,6 +64,7 @@ export default function IntakePage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<IntakeResult | null>(null);
   const [saving, setSaving] = useState(false);
+  const [generating, setGenerating] = useState(false);
   const router = useRouter();
 
   const [ex, setEx] = useState<Extracted | null>(null);
@@ -113,6 +115,28 @@ export default function IntakePage() {
     if (!result || !ex) return;
     setSaving(true);
     router.push(`/quotes/new?trip_id=${result.trip_id}`);
+  }
+
+  async function handleGenerate() {
+    if (!result) return;
+    setGenerating(true);
+    setError("");
+    try {
+      const res = await fetch("/api/quotes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trip_id: result.trip_id }),
+      });
+      const data = (await res.json()) as {
+        quote?: { id: string };
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Failed to generate quote");
+      if (data.quote?.id) router.push(`/quotes/${data.quote.id}`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to generate quote");
+      setGenerating(false);
+    }
   }
 
   const conf = result?.confidence ?? {};
@@ -202,6 +226,8 @@ export default function IntakePage() {
               onUpdateLeg={updateLeg}
               onSave={handleSave}
               saving={saving}
+              onGenerate={handleGenerate}
+              generating={generating}
             />
           )}
         </div>

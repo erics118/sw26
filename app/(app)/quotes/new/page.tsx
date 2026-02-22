@@ -82,6 +82,9 @@ function NewQuotePageContent() {
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewError, setPreviewError] = useState("");
   const previewFetchedRef = useRef(false);
+  const [suggesting, setSuggesting] = useState(false);
+  const [suggestError, setSuggestError] = useState("");
+  const [suggestedPreview, setSuggestedPreview] = useState(false);
 
   const [optimizationMode, setOptimizationMode] =
     useState<OptimizationMode>("balanced");
@@ -94,17 +97,17 @@ function NewQuotePageContent() {
       trips,
     });
 
-  const isPreviewFlow = !!tripIdParam;
+  const isPreviewFlow = !!tripIdParam || suggestedPreview;
 
   useEffect(() => {
     async function load() {
       // Preview flow: load just the specific trip by ID.
       // Manual flow: load unquoted trips only (left join filter).
-      const tripsQuery = isPreviewFlow
+      const tripsQuery = tripIdParam
         ? supabase
             .from("trips")
             .select("id, legs, trip_type, pax_adults, created_at")
-            .eq("id", tripIdParam!)
+            .eq("id", tripIdParam)
             .limit(1)
         : supabase
             .from("trips")
@@ -145,7 +148,7 @@ function NewQuotePageContent() {
       setAircraft((aircraftData as unknown as Aircraft[]) ?? []);
     }
     void load();
-  }, [supabase, isPreviewFlow, tripIdParam]);
+  }, [supabase, tripIdParam]);
 
   // Preview flow: fetch aircraft + 3 plans when trip_id in URL
   useEffect(() => {
@@ -204,6 +207,31 @@ function NewQuotePageContent() {
 
   const selectedPlan =
     isPreviewFlow && preview ? (preview[optimizationMode] ?? null) : routePlan;
+
+  async function handleSuggest() {
+    if (!selectedTripId) return;
+    setSuggesting(true);
+    setSuggestError("");
+    try {
+      const res = await fetch("/api/quotes/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trip_id: selectedTripId }),
+      });
+      const data = (await res.json()) as PreviewResult & { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "Suggest failed");
+      setPreview(data);
+      setSelectedAircraftId(data.aircraft_id);
+      setOptimizationMode(data.recommendation.mode);
+      setSuggestedPreview(true);
+    } catch (e) {
+      setSuggestError(
+        e instanceof Error ? e.message : "Could not suggest aircraft",
+      );
+    } finally {
+      setSuggesting(false);
+    }
+  }
 
   async function handleSave() {
     if (!selectedTripId) {
@@ -450,36 +478,52 @@ function NewQuotePageContent() {
                   </Link>
                 </p>
               ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {aircraft.map((a) => {
-                    const isSelected = a.id === selectedAircraftId;
-                    return (
-                      <button
-                        key={a.id}
-                        onClick={() => setSelectedAircraftId(a.id)}
-                        className={`rounded-md border px-3 py-2.5 text-left transition-colors ${
-                          isSelected
-                            ? "border-amber-400/50 bg-amber-400/5"
-                            : "border-zinc-800 hover:border-zinc-700"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-sm font-semibold text-zinc-200">
-                            {a.tail_number}
-                          </span>
-                          <span className="text-xs text-zinc-500 capitalize">
-                            {a.category}
-                          </span>
-                        </div>
-                        <div className="mt-1 flex gap-3 text-xs text-zinc-600">
-                          <span>{a.range_nm.toLocaleString()} nm</span>
-                          <span>{a.pax_capacity} pax</span>
-                          {a.has_wifi && <span>wifi</span>}
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    {aircraft.map((a) => {
+                      const isSelected = a.id === selectedAircraftId;
+                      return (
+                        <button
+                          key={a.id}
+                          onClick={() => setSelectedAircraftId(a.id)}
+                          className={`rounded-md border px-3 py-2.5 text-left transition-colors ${
+                            isSelected
+                              ? "border-amber-400/50 bg-amber-400/5"
+                              : "border-zinc-800 hover:border-zinc-700"
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono text-sm font-semibold text-zinc-200">
+                              {a.tail_number}
+                            </span>
+                            <span className="text-xs text-zinc-500 capitalize">
+                              {a.category}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex gap-3 text-xs text-zinc-600">
+                            <span>{a.range_nm.toLocaleString()} nm</span>
+                            <span>{a.pax_capacity} pax</span>
+                            {a.has_wifi && <span>wifi</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 flex items-center gap-3">
+                    <Button
+                      onClick={() => void handleSuggest()}
+                      loading={suggesting}
+                      variant="ghost"
+                      size="sm"
+                      disabled={!selectedTripId}
+                    >
+                      Suggest best aircraft
+                    </Button>
+                    {suggestError && (
+                      <p className="text-xs text-red-400">{suggestError}</p>
+                    )}
+                  </div>
+                </>
               )}
             </Card>
           )}

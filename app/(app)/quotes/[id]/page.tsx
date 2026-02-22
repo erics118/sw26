@@ -8,6 +8,7 @@ import QuoteStatusUpdate from "@/components/Quotes/QuoteStatusUpdate";
 import CostBreakdown from "@/components/ui/CostBreakdown";
 import type { RoutePlan } from "@/lib/database.types";
 import RoutePlanSection from "@/components/Quotes/RoutePlanSection";
+import QuoteExplainButton from "./QuoteExplainButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -159,20 +160,23 @@ export default async function QuoteDetailPage({ params }: PageProps) {
             {client?.name ?? "No client"} · v{quote.version} · {quote.currency}
           </p>
         </div>
-        <Badge
-          variant={
-            statusVariant(quote.status) as
-              | "amber"
-              | "green"
-              | "red"
-              | "yellow"
-              | "blue"
-              | "zinc"
-          }
-          size="md"
-        >
-          {quote.status}
-        </Badge>
+        <div className="flex flex-col items-end gap-2">
+          <Badge
+            variant={
+              statusVariant(quote.status) as
+                | "amber"
+                | "green"
+                | "red"
+                | "yellow"
+                | "blue"
+                | "zinc"
+            }
+            size="md"
+          >
+            {quote.status}
+          </Badge>
+          <QuoteExplainButton quoteId={id} />
+        </div>
       </div>
 
       {/* Status stepper + update */}

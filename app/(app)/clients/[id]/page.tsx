@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import type { Client } from "@/lib/database.types";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge, { statusVariant } from "@/components/ui/Badge";
+import ClientActionCard from "./ClientActionCard";
 
 type QuoteRow = {
   id: string;
@@ -243,6 +244,8 @@ export default async function ClientDetailPage({ params }: PageProps) {
               </p>
             </Card>
           )}
+
+          <ClientActionCard clientId={id} />
         </div>
       </div>
     </div>
