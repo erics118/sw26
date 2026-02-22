@@ -10,7 +10,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/database.types";
 import { calculatePricing } from "@/lib/pricing/engine";
-import type { TripLeg } from "@/lib/database.types";
+import type { TripLeg, Json } from "@/lib/database.types";
 
 export async function POST() {
   const supabase = createClient<Database>(
@@ -18,21 +18,40 @@ export async function POST() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
+  type BackfillQuote = {
+    id: string;
+    margin_pct: number | null;
+    chosen_aircraft_category: string | null;
+    actual_total_hours: number | null;
+    trips: {
+      legs: unknown;
+      catering_notes: string | null;
+    } | null;
+    aircraft: {
+      category: string | null;
+      fuel_burn_gph: number | null;
+      home_base_icao: string | null;
+    } | null;
+  };
+
   // 1. Fetch all completed quotes with trip legs + aircraft details
-  const { data: quotes, error: quoteErr } = await supabase
+  const { data: rawQuotes, error: quoteErr } = await supabase
     .from("quotes")
     .select(
-      "id, margin_pct, chosen_aircraft_category, actual_total_hours, " +
-        "trips(legs, catering_notes), " +
-        "aircraft(category, fuel_burn_gph, home_base_icao)",
+      `id, margin_pct, chosen_aircraft_category, actual_total_hours,
+       trips(legs, catering_notes),
+       aircraft(category, fuel_burn_gph, home_base_icao)`,
     )
-    .eq("status", "completed")
-    .not("trips", "is", null);
+    .eq("status", "completed");
 
   if (quoteErr) {
     return NextResponse.json({ error: quoteErr.message }, { status: 500 });
   }
-  if (!quotes?.length) {
+
+  const quotes = ((rawQuotes ?? []) as unknown as BackfillQuote[]).filter(
+    (q) => q.trips !== null,
+  );
+  if (!quotes.length) {
     return NextResponse.json({
       success: true,
       processed: 0,
@@ -72,7 +91,7 @@ export async function POST() {
     margin_amount: number;
     tax: number;
     total: number;
-    per_leg_breakdown: unknown;
+    per_leg_breakdown: Json;
   }[] = [];
 
   for (const q of toPrice) {
@@ -125,7 +144,7 @@ export async function POST() {
       margin_amount: result.margin_amount,
       tax: result.tax,
       total: result.total,
-      per_leg_breakdown: result.per_leg_breakdown,
+      per_leg_breakdown: result.per_leg_breakdown as unknown as Json,
     });
   }
 
