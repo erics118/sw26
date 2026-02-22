@@ -111,12 +111,12 @@ export default function LoginPage() {
 
         <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-center">
           <p className="text-xs font-semibold tracking-widest text-zinc-500 uppercase">
-            Demo credentials
+            Demo credentials:
           </p>
           <p className="mt-1.5 font-mono text-xs text-zinc-400">
-            admin@example.com
+            Email: admin@example.com
           </p>
-          <p className="font-mono text-xs text-zinc-400">password</p>
+          <p className="font-mono text-xs text-zinc-400">Password: password</p>
         </div>
       </div>
     </>
