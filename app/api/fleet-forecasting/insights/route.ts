@@ -28,6 +28,40 @@ const STAGE_PRIORS: Record<string, number> = {
   verbally_confirmed: 0.85,
 };
 
+// ─── Cache helpers ─────────────────────────────────────────────────────────
+// Insights are cached in forecast_signals for the current UTC day.
+// Cache key = signal_type + date_range_start + date_range_end + model_version.
+
+const INSIGHT_MODEL = "claude-sonnet-4-6";
+
+async function getCachedInsight(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  signalType: string,
+  rangeStart: string,
+  rangeEnd: string,
+): Promise<ForecastInsight | null> {
+  const { data } = await supabase
+    .from("forecast_signals")
+    .select("payload, confidence")
+    .eq("signal_type", signalType)
+    .eq("date_range_start", rangeStart)
+    .eq("date_range_end", rangeEnd)
+    .eq("model_version", INSIGHT_MODEL)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!data) return null;
+  const p = data.payload as { summary?: string; actions?: string[] };
+  if (!p?.summary || !p?.actions) return null;
+
+  return {
+    summary: p.summary,
+    actions: p.actions,
+    confidence: data.confidence,
+  };
+}
+
 // ─── POST /api/fleet-forecasting/insights ────────────────────────────────────
 // Body: { tab: "forecast" | "utilization" | "learning", days?: number, horizon?: 7 | 30 | 90 }
 
@@ -46,6 +80,16 @@ export async function POST(request: Request) {
     const startDate = new Date();
     startDate.setUTCHours(0, 0, 0, 0);
     const endDate = addDays(startDate, days - 1);
+    const rangeStart = startDate.toISOString().slice(0, 10);
+    const rangeEnd = endDate.toISOString().slice(0, 10);
+
+    const cached = await getCachedInsight(
+      supabase,
+      "forecast_insight",
+      rangeStart,
+      rangeEnd,
+    );
+    if (cached) return NextResponse.json(cached);
 
     const [capacity, demand] = await Promise.all([
       computeCapacity(supabase, startDate, endDate),
@@ -68,7 +112,7 @@ export async function POST(request: Request) {
       action: "fleet_forecast.insight_generated",
       entity_type: "fleet_forecast",
       ai_generated: true,
-      ai_model: "claude-sonnet-4-6",
+      ai_model: INSIGHT_MODEL,
       payload: { tab, days, confidence: insight.confidence },
     });
 
@@ -82,6 +126,16 @@ export async function POST(request: Request) {
     endDate.setUTCHours(23, 59, 59, 999);
     const startDate = addDays(endDate, -29);
     startDate.setUTCHours(0, 0, 0, 0);
+    const rangeStart = startDate.toISOString().slice(0, 10);
+    const rangeEnd = endDate.toISOString().slice(0, 10);
+
+    const cached = await getCachedInsight(
+      supabase,
+      "utilization_insight",
+      rangeStart,
+      rangeEnd,
+    );
+    if (cached) return NextResponse.json(cached);
 
     const forecastStart = new Date();
     forecastStart.setUTCHours(0, 0, 0, 0);
@@ -100,8 +154,8 @@ export async function POST(request: Request) {
 
     const utilizationData: UtilizationSummary = {
       ...utilResult,
-      period_start: startDate.toISOString().slice(0, 10),
-      period_end: endDate.toISOString().slice(0, 10),
+      period_start: rangeStart,
+      period_end: rangeEnd,
     };
     const recsData: RecommendationSummary = {
       ...recs,
@@ -118,7 +172,7 @@ export async function POST(request: Request) {
       action: "fleet_utilization.insight_generated",
       entity_type: "fleet_forecast",
       ai_generated: true,
-      ai_model: "claude-sonnet-4-6",
+      ai_model: INSIGHT_MODEL,
       payload: { tab, confidence: insight.confidence },
     });
 
@@ -131,6 +185,27 @@ export async function POST(request: Request) {
     const horizonDays = (body.horizon ?? 90) as 7 | 30 | 90;
     const histEnd = new Date();
     const histStart = addDays(histEnd, -horizonDays);
+    const rangeStart = histStart.toISOString().slice(0, 10);
+    const rangeEnd = histEnd.toISOString().slice(0, 10);
+
+    const cached = await getCachedInsight(
+      supabase,
+      "learning_insight",
+      rangeStart,
+      rangeEnd,
+    );
+    if (cached) {
+      // For learning tab the caller also expects accuracy/delay_reasons — serve
+      // a minimal cached response that the UI can handle.
+      return NextResponse.json({
+        insight: cached,
+        accuracy: [],
+        delay_reasons: [],
+        win_rate_calibration: [],
+        horizon_days: horizonDays,
+        from_cache: true,
+      });
+    }
 
     // ── Actuals from completed quotes ────────────────────────────────────────
     const { data: completedQuotes } = await supabase
@@ -286,7 +361,12 @@ export async function POST(request: Request) {
       entity_type: "fleet_forecast",
       ai_generated: true,
       ai_model: "claude-sonnet-4-6",
-      payload: { tab, horizon: horizonDays, confidence: insight.confidence },
+      payload: {
+        tab,
+        horizon: horizonDays,
+        confidence: insight.confidence,
+        ai_model: INSIGHT_MODEL,
+      },
     });
 
     return NextResponse.json({
