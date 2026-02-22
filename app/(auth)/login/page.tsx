@@ -41,7 +41,9 @@ export default function LoginPage() {
       {exiting && (
         <div className="overlay-fade-in pointer-events-none fixed inset-0 z-50 bg-zinc-950" />
       )}
-      <div className={`w-full max-w-sm${exiting ? "login-exit" : ""}`}>
+      <div
+        className={["w-full max-w-sm", exiting ? "login-exit" : ""].join(" ")}
+      >
         {/* Logo */}
         <div className="mb-6 flex flex-col items-center gap-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-400 text-zinc-950 shadow-lg shadow-amber-400/20">
