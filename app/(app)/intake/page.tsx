@@ -64,7 +64,6 @@ export default function IntakePage() {
   const [error, setError] = useState("");
   const [result, setResult] = useState<IntakeResult | null>(null);
   const [saving, setSaving] = useState(false);
-  const [generating, setGenerating] = useState(false);
   const router = useRouter();
 
   const [ex, setEx] = useState<Extracted | null>(null);
@@ -115,28 +114,6 @@ export default function IntakePage() {
     if (!result || !ex) return;
     setSaving(true);
     router.push(`/quotes/new?trip_id=${result.trip_id}`);
-  }
-
-  async function handleGenerate() {
-    if (!result) return;
-    setGenerating(true);
-    setError("");
-    try {
-      const res = await fetch("/api/quotes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ trip_id: result.trip_id }),
-      });
-      const data = (await res.json()) as {
-        quote?: { id: string };
-        error?: string;
-      };
-      if (!res.ok) throw new Error(data.error ?? "Failed to generate quote");
-      if (data.quote?.id) router.push(`/quotes/${data.quote.id}`);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to generate quote");
-      setGenerating(false);
-    }
   }
 
   const conf = result?.confidence ?? {};
@@ -226,8 +203,6 @@ export default function IntakePage() {
               onUpdateLeg={updateLeg}
               onSave={handleSave}
               saving={saving}
-              onGenerate={handleGenerate}
-              generating={generating}
             />
           )}
         </div>
