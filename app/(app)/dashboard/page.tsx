@@ -12,19 +12,28 @@ type QuoteRow = {
   confirmed_at: string | null;
   clients: { name: string } | null;
   trips: { legs: Array<{ from_icao: string; to_icao: string }> } | null;
+  aircraft: { id: string; tail_number: string } | null;
 };
 
 type TripRow = {
   id: string;
   requested_departure_window_start: string;
   clients: { name: string } | null;
-  trips: { legs: Array<{ from_icao: string; to_icao: string }> } | null;
+  legs: Array<{ from_icao: string; to_icao: string }> | null;
 };
 
 type CrewRow = {
   id: string;
   name: string;
-  status: string;
+  role: string;
+};
+
+type RecommendationData = {
+  reposition?: Array<{
+    aircraft_id: string;
+    tail_number: string;
+    move_to_airport: string;
+  }>;
 };
 
 type DashboardData = {
@@ -56,13 +65,6 @@ type UtilizationData = {
     avg_utilization_rate: number;
     underutilized_count: number;
     overconstrained_count: number;
-  }>;
-};
-
-type RecommendationData = {
-  reposition?: Array<{
-    aircraft_id: string;
-    destination_icao: string;
   }>;
 };
 
@@ -470,10 +472,10 @@ export default function DashboardPage() {
                 className="rounded-md border border-emerald-900/30 bg-emerald-900/10 p-2.5"
               >
                 <p className="text-xs font-semibold text-emerald-400">
-                  {rec.aircraft_id}
+                  {rec.tail_number ?? rec.aircraft_id}
                 </p>
                 <p className="mt-0.5 text-xs text-zinc-600">
-                  → {rec.destination_icao}
+                  → {rec.move_to_airport}
                 </p>
               </div>
             ))}
@@ -502,6 +504,9 @@ export default function DashboardPage() {
                 const client = !Array.isArray(q.clients)
                   ? (q.clients as { name?: string } | null)
                   : null;
+                const aircraft = !Array.isArray(q.aircraft)
+                  ? (q.aircraft as { tail_number?: string } | null)
+                  : null;
                 return (
                   <div
                     key={q.id}
@@ -519,6 +524,9 @@ export default function DashboardPage() {
                         }`}
                       >
                         {q.status}
+                        {aircraft?.tail_number
+                          ? ` · ${aircraft.tail_number}`
+                          : ""}
                       </p>
                     </div>
                     <p className="text-xs font-bold text-zinc-400">$28k</p>

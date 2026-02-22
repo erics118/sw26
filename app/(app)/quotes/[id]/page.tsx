@@ -7,7 +7,7 @@ import StatusStepper from "@/components/ui/StatusStepper";
 import QuoteStatusUpdate from "@/components/Quotes/QuoteStatusUpdate";
 import CostBreakdown from "@/components/ui/CostBreakdown";
 import EditableCostBreakdown from "@/components/Quotes/EditableCostBreakdown";
-import type { RoutePlan } from "@/lib/database.types";
+import type { QuoteStatus, RoutePlan } from "@/lib/database.types";
 import RoutePlanSection from "@/components/Quotes/RoutePlanSection";
 import QuoteExplainButton from "./QuoteExplainButton";
 
@@ -187,7 +187,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
           {quote.status !== "lost" && quote.status !== "completed" && (
             <QuoteStatusUpdate
               quoteId={quote.id}
-              currentStatus={quote.status}
+              currentStatus={quote.status as QuoteStatus}
             />
           )}
         </div>

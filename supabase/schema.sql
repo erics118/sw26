@@ -153,6 +153,36 @@ create table audit_logs (
 );
 
 -- ─────────────────────────────────────────────────────────────────────────────
+-- Aircraft Live Positions (updated by ADS-B / FBO feeds)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+create table aircraft_positions (
+  id uuid primary key default uuid_generate_v4(),
+  aircraft_id uuid references aircraft(id) on delete cascade not null,
+  callsign text,
+  lat numeric(9,6) not null,
+  lon numeric(10,6) not null,
+  altitude_ft integer not null default 0,
+  heading numeric(5,1) not null default 0,
+  groundspeed_kts integer not null default 0,
+  origin_icao text,
+  destination_icao text,
+  eta timestamptz,
+  etd timestamptz,
+  in_air boolean not null default false,
+  status text not null default 'green',          -- 'green' | 'yellow' | 'red'
+  pax integer not null default 0,
+  client_name text,
+  trail jsonb not null default '[]',             -- array of [lat, lon] breadcrumb pairs
+  reasons text[] not null default '{}',          -- alert reason strings
+  updated_at timestamptz not null default now(),
+  unique(aircraft_id)                            -- one position row per aircraft
+);
+
+create index aircraft_positions_aircraft_idx on aircraft_positions (aircraft_id);
+create index aircraft_positions_in_air_idx on aircraft_positions (in_air) where in_air = true;
+
+-- ─────────────────────────────────────────────────────────────────────────────
 -- Airports
 -- ─────────────────────────────────────────────────────────────────────────────
 
@@ -285,6 +315,7 @@ alter table trips enable row level security;
 alter table quotes enable row level security;
 alter table quote_costs enable row level security;
 alter table audit_logs enable row level security;
+alter table aircraft_positions enable row level security;
 alter table airports enable row level security;
 alter table aircraft_maintenance enable row level security;
 alter table fleet_forecast_overrides enable row level security;
@@ -299,6 +330,7 @@ create policy "staff_all" on trips                    for all using (auth.role()
 create policy "staff_all" on quotes                   for all using (auth.role() = 'authenticated');
 create policy "staff_all" on quote_costs              for all using (auth.role() = 'authenticated');
 create policy "staff_all" on audit_logs               for all using (auth.role() = 'authenticated');
+create policy "staff_all" on aircraft_positions        for all using (auth.role() = 'authenticated');
 create policy "staff_all" on airports                 for all using (auth.role() = 'authenticated');
 create policy "staff_all" on aircraft_maintenance     for all using (auth.role() = 'authenticated');
 create policy "staff_all" on fleet_forecast_overrides for all using (auth.role() = 'authenticated');

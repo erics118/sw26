@@ -63,11 +63,8 @@ export async function POST(_request: Request, { params }: RouteContext) {
     return NextResponse.json({ error: logErr.message }, { status: 500 });
   }
 
-  // Bump the quote version counter
-  await supabase
-    .from("quotes")
-    .update({ version: quote.version + 1 })
-    .eq("id", id);
+  const nextVersion = (quote.version ?? 0) + 1;
+  await supabase.from("quotes").update({ version: nextVersion }).eq("id", id);
 
-  return NextResponse.json({ snapshotted: true, version: quote.version });
+  return NextResponse.json({ snapshotted: true, version: nextVersion });
 }

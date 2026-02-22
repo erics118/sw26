@@ -12,6 +12,13 @@ import type { Json, Trip, TripLeg } from "@/lib/database.types";
 export async function POST(request: Request) {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: unknown;
   try {
     body = await request.json();
