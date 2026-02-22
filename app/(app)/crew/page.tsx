@@ -15,7 +15,7 @@ export default async function CrewPage() {
   const { data: crew } = await supabase
     .from("crew")
     .select(
-      "id, name, role, ratings, duty_hours_this_week, available_hours_per_day, last_duty_end, created_at",
+      "id, name, role, duty_hours_this_week, available_hours_per_day, last_duty_end, created_at",
     )
     .order("created_at", { ascending: false });
 
@@ -42,7 +42,7 @@ export default async function CrewPage() {
                 {[
                   "Name",
                   "Role",
-                  "Ratings",
+                  "Current Location",
                   "Duty Hrs (week)",
                   "Avail Hrs/Day",
                   "Last Duty End",
@@ -69,21 +69,8 @@ export default async function CrewPage() {
                   <td className="px-5 py-3 text-zinc-400">
                     {ROLE_LABELS[c.role] ?? c.role}
                   </td>
-                  <td className="px-5 py-3">
-                    {c.ratings?.length ? (
-                      <div className="flex flex-wrap gap-1">
-                        {c.ratings.map((r) => (
-                          <span
-                            key={r}
-                            className="rounded border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-400"
-                          >
-                            {r}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-zinc-700">—</span>
-                    )}
+                  <td className="px-5 py-3 font-mono text-sm text-zinc-400">
+                    <span className="text-zinc-700">—</span>
                   </td>
                   <td className="px-5 py-3 text-zinc-400">
                     {c.duty_hours_this_week}h
