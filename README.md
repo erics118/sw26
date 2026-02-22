@@ -1,36 +1,42 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Submission for NYU Startup Week 2026 Buildathon
 
-## Getting Started
+## Inspiration
+Charter operators waste time and lose potential revenue due to fragmented data, manual routing, and empty legs. They depend on humans for a lot of the work, leading to potential losses and errors. This also leads to suboptimal routing, underutilized aircraft, and costly empty-leg flights. We saw an opportunity to centralize decision-making with AI. 
 
-First, run the development server:
+## What it does
+SkyOps is an AI operations dashboard that optimizes routing, forecasting, and fleet utilization to reduce empty legs and increase revenue per flight hour.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+With SkyOps, operators can:
+- visualize incoming trip requests and quotes in one unified dashboard
+- automatically design routes and and plans with minimal human intervention
+- forecast future demand and aircraft positioning requirements
+- identify and reduce empty-leg flights
+- receive AI-assisted routing and scheduling accommodations
+- track revenue per flight and utilization metrics
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## How we built it
+We unified trip, quote, and fleet data into a structured model, built deterministic forecasting logic, and layered AI agents for probability and routing recommendations.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+We developed a centralized data layer that normalizes trips, pricing, and fleet data. We designed relational schemas to connect all the segmented data together.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Agentic AI workflows were used to design routes efficiently. This allowed us to incorporate various data types, such as weather, NOTAM alerts, airport conditions, and more, and generate the best route where a human may fail to optimize.
 
-## Learn More
+Eric, Akhil, and Charlie focused on building the backend, working on structuring the database, designing the forecasting and utilization engines, and implementing the AI agents that handle the routing and repositioning recommendations.
 
-To learn more about Next.js, take a look at the following resources:
+Rohan worked on making the front-end look clean and visually appealing, and also conducted market research.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Challenges we ran into
+Forecasting uncertainty, and creating a properly functioning database. There are so many factors in designing something for such a complicated workflow. We needed to make sure we included all the relevant data for flights, without making the system messy and difficult to use. 
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Creating a relational database schema that accurately represented complex aviation operations required us to iterate through various plans, as we needed to ensure consistency across different uses.
 
-## Deploy on Vercel
+Much of the data we found was incomplete or nonexistent, so we had to validate and standardize the data, or find alternative sources to use.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Accomplishments that we're proud of
+We are proud that we were able to build an end-to-end prototype that turns messy trip requests into actionable routing and utilization insights in one dashboard in such a short amount of time. 
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## What we learned
+AI works best when paired with deterministic planning and clear constraints. Centralized data is the real unlock in charter operations. Operators will trust recommendations more when they are backed by sufficient reasoning.
+
+## What's next for SkyOps
+Improve forecasting accuracy, expand pricing optimization, integrate crew/maintenance constraints, and pilot our product with small-to-mid charter plane operators.
