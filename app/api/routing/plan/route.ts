@@ -11,14 +11,6 @@ import { computeRoutePlan, RoutingError } from "@/lib/routing";
 export async function POST(request: Request) {
   const supabase = await createClient();
 
-  // Auth check
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   // Parse and validate body
   let body: unknown;
   try {

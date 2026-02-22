@@ -80,7 +80,7 @@ export default function CostBreakdown({
 }: CostBreakdownProps) {
   return (
     <div className="space-y-0.5">
-      <Row label="Fuel" amount={fuelCost} currency={currency} />
+      <Row label="Fuel" amount={Math.max(0, fuelCost)} currency={currency} />
       <Row label="FBO Fees" amount={fboFees} currency={currency} />
       <Row
         label={`Repositioning${repositioningHours > 0 ? ` (${repositioningHours}h)` : ""}`}

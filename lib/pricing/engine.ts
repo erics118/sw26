@@ -130,10 +130,13 @@ export function calculatePricing(input: PricingInput): PricingResult {
     fuelPriceOverrideUsd,
   } = input;
 
-  const fuelPricePerGal = fuelPriceOverrideUsd ?? FUEL_PRICE_PER_GAL;
+  const fuelPricePerGal = Math.max(
+    0,
+    fuelPriceOverrideUsd ?? FUEL_PRICE_PER_GAL,
+  );
 
   const perf = CATEGORY_PERF[aircraftCategory] ?? CATEGORY_PERF["midsize"]!;
-  const burnRate = fuelBurnGph ?? perf!.defaultFuelBurnGph;
+  const burnRate = Math.max(0, fuelBurnGph ?? perf!.defaultFuelBurnGph);
   const lineItems: CostLineItem[] = [];
   const perLegBreakdown: CostLineItem[] = [];
 
@@ -277,7 +280,7 @@ export function calculatePricing(input: PricingInput): PricingResult {
 
   return {
     line_items: lineItems,
-    fuel_cost: totalFuelCost,
+    fuel_cost: Math.max(0, totalFuelCost),
     fbo_fees: totalFboFees,
     repositioning_cost: repoCost,
     repositioning_hours: repoHours,

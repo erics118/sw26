@@ -389,7 +389,7 @@ export function createDatabaseTools(supabase: SupabaseClient) {
         currency: z.string().default("USD"),
         notes: z.string().nullable().optional(),
         // ── Cost fields from calculate_pricing output ──
-        fuel_cost: z.number(),
+        fuel_cost: z.number().min(0),
         fbo_fees: z.number(),
         repositioning_cost: z.number(),
         repositioning_hours: z.number(),

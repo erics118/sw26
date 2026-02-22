@@ -25,30 +25,10 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
 
-  const isPublic = pathname === "/login" || pathname.startsWith("/api/dev/");
-
-  // Redirect / to login (or dashboard if logged in)
+  // Auth disabled: redirect / to dashboard, allow all routes
   if (pathname === "/") {
-    const url = request.nextUrl.clone();
-    url.pathname = user ? "/dashboard" : "/login";
-    return NextResponse.redirect(url);
-  }
-
-  // Redirect unauthenticated users to login
-  if (!user && !isPublic) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  // Redirect authenticated users away from login
-  if (user && pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
