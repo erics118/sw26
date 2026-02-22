@@ -215,3 +215,77 @@ export async function POST() {
     history_window: `${historyStart.toISOString().slice(0, 10)} → ${today.toISOString().slice(0, 10)}`,
   });
 }
+
+/**
+ * DELETE /api/dev/seed-history
+ *
+ * Removes all quotes with a null client_id and their associated trips.
+ */
+export async function DELETE() {
+  const supabase = createClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+
+  // Collect trip IDs linked to clientless quotes before deleting
+  const { data: orphanQuotes, error: fetchError } = await supabase
+    .from("quotes")
+    .select("id, trip_id")
+    .is("client_id", null);
+
+  if (fetchError) {
+    return NextResponse.json({ error: fetchError.message }, { status: 500 });
+  }
+
+  let quotesDeleted = 0;
+  let tripsDeleted = 0;
+
+  if (orphanQuotes?.length) {
+    const quoteIds = orphanQuotes.map((q) => q.id);
+
+    // Delete quote_costs first (FK → quotes)
+    await supabase.from("quote_costs").delete().in("quote_id", quoteIds);
+
+    // Delete quotes (FK → trips)
+    const { error: quoteDeleteError } = await supabase
+      .from("quotes")
+      .delete()
+      .in("id", quoteIds);
+
+    if (quoteDeleteError) {
+      return NextResponse.json(
+        { error: quoteDeleteError.message },
+        { status: 500 },
+      );
+    }
+    quotesDeleted = quoteIds.length;
+  }
+
+  // Sweep up any trips that have no quotes referencing them
+  const { data: allTrips } = await supabase.from("trips").select("id");
+  if (allTrips?.length) {
+    const { data: referencedTrips } = await supabase
+      .from("quotes")
+      .select("trip_id");
+    const referencedSet = new Set(
+      (referencedTrips ?? []).map((q) => q.trip_id),
+    );
+    const orphanedTripIds = allTrips
+      .map((t) => t.id)
+      .filter((id) => !referencedSet.has(id));
+
+    if (orphanedTripIds.length) {
+      const { count } = await supabase
+        .from("trips")
+        .delete({ count: "exact" })
+        .in("id", orphanedTripIds);
+      tripsDeleted = count ?? orphanedTripIds.length;
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    quotes_deleted: quotesDeleted,
+    trips_deleted: tripsDeleted,
+  });
+}

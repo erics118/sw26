@@ -6,7 +6,8 @@
       "WebFetch(domain:api.faa.gov)",
       "WebFetch(domain:www.autorouter.aero)",
       "WebFetch(domain:adds-faa.opendata.arcgis.com)",
-      "WebFetch(domain:ais-faa.opendata.arcgis.com)"
+      "WebFetch(domain:ais-faa.opendata.arcgis.com)",
+      "Bash(curl:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\charl\\School\\cs_misc\\sw26\\components\\FleetForecasting"
