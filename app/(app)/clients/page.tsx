@@ -46,7 +46,7 @@ export default async function ClientsPage() {
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-zinc-900">
               <tr className="border-b border-zinc-800">
                 {["Name", "Company", "Contact", "Flags", "Added", ""].map(
                   (h) => (

@@ -336,7 +336,7 @@ export default function FleetForecastingPage() {
               </div>
             ) : utilView === "aircraft" ? (
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-zinc-900">
                   <tr className="border-b border-zinc-800">
                     <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
                       Aircraft
@@ -401,7 +401,7 @@ export default function FleetForecastingPage() {
               </table>
             ) : (
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-zinc-900">
                   <tr className="border-b border-zinc-800">
                     <th className="px-5 py-3 text-left text-xs font-semibold tracking-widest text-zinc-600 uppercase">
                       Base
