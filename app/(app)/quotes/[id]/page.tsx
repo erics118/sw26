@@ -6,6 +6,7 @@ import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import StatusStepper from "@/components/ui/StatusStepper";
 import QuoteStatusUpdate from "@/components/Quotes/QuoteStatusUpdate";
 import CostBreakdown from "@/components/ui/CostBreakdown";
+import EditableCostBreakdown from "@/components/Quotes/EditableCostBreakdown";
 import type { RoutePlan } from "@/lib/database.types";
 import RoutePlanSection from "@/components/Quotes/RoutePlanSection";
 import QuoteExplainButton from "./QuoteExplainButton";
@@ -241,22 +242,43 @@ export default async function QuoteDetailPage({ params }: PageProps) {
               </span>
             </CardHeader>
             {costs ? (
-              <CostBreakdown
-                fuelCost={costs.fuel_cost}
-                fboFees={costs.fbo_fees}
-                repositioningCost={costs.repositioning_cost}
-                repositioningHours={costs.repositioning_hours}
-                permitFees={costs.permit_fees}
-                crewOvernightCost={costs.crew_overnight_cost}
-                cateringCost={costs.catering_cost}
-                peakDaySurcharge={costs.peak_day_surcharge}
-                subtotal={costs.subtotal}
-                marginPct={quote.margin_pct}
-                marginAmount={costs.margin_amount}
-                tax={costs.tax}
-                total={costs.total}
-                currency={quote.currency}
-              />
+              quote.status === "pricing" ? (
+                <EditableCostBreakdown
+                  quoteId={quote.id}
+                  fuelCost={costs.fuel_cost}
+                  fboFees={costs.fbo_fees}
+                  repositioningCost={costs.repositioning_cost}
+                  repositioningHours={costs.repositioning_hours}
+                  permitFees={costs.permit_fees}
+                  crewOvernightCost={costs.crew_overnight_cost}
+                  cateringCost={costs.catering_cost}
+                  peakDaySurcharge={costs.peak_day_surcharge}
+                  subtotal={costs.subtotal}
+                  marginPct={quote.margin_pct}
+                  marginAmount={costs.margin_amount}
+                  tax={costs.tax}
+                  total={costs.total}
+                  currency={quote.currency}
+                  isEditable={true}
+                />
+              ) : (
+                <CostBreakdown
+                  fuelCost={costs.fuel_cost}
+                  fboFees={costs.fbo_fees}
+                  repositioningCost={costs.repositioning_cost}
+                  repositioningHours={costs.repositioning_hours}
+                  permitFees={costs.permit_fees}
+                  crewOvernightCost={costs.crew_overnight_cost}
+                  cateringCost={costs.catering_cost}
+                  peakDaySurcharge={costs.peak_day_surcharge}
+                  subtotal={costs.subtotal}
+                  marginPct={quote.margin_pct}
+                  marginAmount={costs.margin_amount}
+                  tax={costs.tax}
+                  total={costs.total}
+                  currency={quote.currency}
+                />
+              )
             ) : (
               <p className="text-sm text-zinc-600">
                 No pricing data yet.{" "}
