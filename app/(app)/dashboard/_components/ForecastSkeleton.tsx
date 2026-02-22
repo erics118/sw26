@@ -35,6 +35,25 @@ export function ForecastSideCardsSkeleton() {
   );
 }
 
+export function RevenueCardSkeleton() {
+  return (
+    <div className="animate-pulse rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="space-y-1.5">
+          <div className="h-3.5 w-28 rounded bg-zinc-800" />
+          <div className="h-3 w-16 rounded bg-zinc-800" />
+        </div>
+        <div className="h-3 w-12 rounded bg-zinc-800" />
+      </div>
+      <div className="h-12 w-full rounded bg-zinc-800" />
+      <div className="mt-3 flex justify-between">
+        <div className="h-3 w-12 rounded bg-zinc-800" />
+        <div className="h-3 w-16 rounded bg-zinc-800" />
+      </div>
+    </div>
+  );
+}
+
 export function TopActionsSkeleton() {
   return (
     <div className="animate-pulse rounded-lg border border-zinc-800 bg-zinc-900 p-5">
