@@ -1,10 +1,18 @@
 "use client";
 
+import type React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const nav = [
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  badge?: number;
+}
+
+const nav: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
@@ -27,6 +35,7 @@ const nav = [
   {
     href: "/intake",
     label: "New Intake",
+    badge: 1,
     icon: (
       <svg
         width="16"
@@ -152,6 +161,11 @@ export default function Sidebar() {
             >
               {item.icon}
               {item.label}
+              {item.badge && (
+                <span className="ml-auto flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-400/20 px-1 text-[10px] font-semibold text-amber-400">
+                  {item.badge}
+                </span>
+              )}
             </Link>
           );
         })}
