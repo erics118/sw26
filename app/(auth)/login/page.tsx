@@ -109,9 +109,15 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-3 text-center text-xs text-zinc-700">
-          Part 135 Charter Management · Staff only
-        </p>
+        <div className="mt-3 rounded-lg border border-zinc-800 bg-zinc-900/50 px-4 py-3 text-center">
+          <p className="text-xs font-semibold tracking-widest text-zinc-500 uppercase">
+            Demo credentials
+          </p>
+          <p className="mt-1.5 font-mono text-xs text-zinc-400">
+            admin@example.com
+          </p>
+          <p className="font-mono text-xs text-zinc-400">password</p>
+        </div>
       </div>
     </>
   );
