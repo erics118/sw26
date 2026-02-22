@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import {
+  type ForecastInsight,
   generateForecastInsight,
   generateUtilizationInsight,
   generateLearningInsight,
@@ -58,7 +59,7 @@ async function getCachedInsight(
   return {
     summary: p.summary,
     actions: p.actions,
-    confidence: data.confidence,
+    confidence: data.confidence as ForecastInsight["confidence"],
   };
 }
 

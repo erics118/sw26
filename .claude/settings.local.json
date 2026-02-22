@@ -1,5 +1,9 @@
 {
   "permissions": {
-    "allow": ["mcp__ide__getDiagnostics", "Bash(git add:*)"]
+    "allow": [
+      "mcp__ide__getDiagnostics",
+      "Bash(git add:*)",
+      "Bash(git rebase:*)"
+    ]
   }
 }

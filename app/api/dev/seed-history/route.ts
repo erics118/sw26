@@ -12,7 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/database.types";
+import type { Database, Json } from "@/lib/database.types";
 
 // Typical revenue flight hours per category (P50 baseline target)
 const CATEGORY_BASELINE: Record<string, number> = {
@@ -70,7 +70,7 @@ export async function POST() {
   // relying on insertion order from Supabase.
   const trips: {
     id: string;
-    legs: unknown;
+    legs: Json;
     trip_type: string;
     pax_adults: number;
     pax_children: number;

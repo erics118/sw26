@@ -6,8 +6,10 @@ import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import StatusStepper from "@/components/ui/StatusStepper";
 import QuoteStatusUpdate from "@/components/Quotes/QuoteStatusUpdate";
 import CostBreakdown from "@/components/ui/CostBreakdown";
-import type { RoutePlan } from "@/lib/database.types";
+import EditableCostBreakdown from "@/components/Quotes/EditableCostBreakdown";
+import type { QuoteStatus, RoutePlan } from "@/lib/database.types";
 import RoutePlanSection from "@/components/Quotes/RoutePlanSection";
+import EditableQuoteDetails from "@/components/Quotes/EditableQuoteDetails";
 import QuoteExplainButton from "./QuoteExplainButton";
 
 interface PageProps {
@@ -186,7 +188,7 @@ export default async function QuoteDetailPage({ params }: PageProps) {
           {quote.status !== "lost" && quote.status !== "completed" && (
             <QuoteStatusUpdate
               quoteId={quote.id}
-              currentStatus={quote.status}
+              currentStatus={quote.status as QuoteStatus}
             />
           )}
         </div>
@@ -241,22 +243,43 @@ export default async function QuoteDetailPage({ params }: PageProps) {
               </span>
             </CardHeader>
             {costs ? (
-              <CostBreakdown
-                fuelCost={costs.fuel_cost}
-                fboFees={costs.fbo_fees}
-                repositioningCost={costs.repositioning_cost}
-                repositioningHours={costs.repositioning_hours}
-                permitFees={costs.permit_fees}
-                crewOvernightCost={costs.crew_overnight_cost}
-                cateringCost={costs.catering_cost}
-                peakDaySurcharge={costs.peak_day_surcharge}
-                subtotal={costs.subtotal}
-                marginPct={quote.margin_pct}
-                marginAmount={costs.margin_amount}
-                tax={costs.tax}
-                total={costs.total}
-                currency={quote.currency}
-              />
+              quote.status === "pricing" ? (
+                <EditableCostBreakdown
+                  quoteId={quote.id}
+                  fuelCost={costs.fuel_cost}
+                  fboFees={costs.fbo_fees}
+                  repositioningCost={costs.repositioning_cost}
+                  repositioningHours={costs.repositioning_hours}
+                  permitFees={costs.permit_fees}
+                  crewOvernightCost={costs.crew_overnight_cost}
+                  cateringCost={costs.catering_cost}
+                  peakDaySurcharge={costs.peak_day_surcharge}
+                  subtotal={costs.subtotal}
+                  marginPct={quote.margin_pct}
+                  marginAmount={costs.margin_amount}
+                  tax={costs.tax}
+                  total={costs.total}
+                  currency={quote.currency}
+                  isEditable={true}
+                />
+              ) : (
+                <CostBreakdown
+                  fuelCost={costs.fuel_cost}
+                  fboFees={costs.fbo_fees}
+                  repositioningCost={costs.repositioning_cost}
+                  repositioningHours={costs.repositioning_hours}
+                  permitFees={costs.permit_fees}
+                  crewOvernightCost={costs.crew_overnight_cost}
+                  cateringCost={costs.catering_cost}
+                  peakDaySurcharge={costs.peak_day_surcharge}
+                  subtotal={costs.subtotal}
+                  marginPct={quote.margin_pct}
+                  marginAmount={costs.margin_amount}
+                  tax={costs.tax}
+                  total={costs.total}
+                  currency={quote.currency}
+                />
+              )
             ) : (
               <p className="text-sm text-zinc-600">
                 No pricing data yet.{" "}
@@ -369,74 +392,20 @@ export default async function QuoteDetailPage({ params }: PageProps) {
             <CardHeader>
               <CardTitle>Quote Details</CardTitle>
             </CardHeader>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-zinc-600">Margin</span>
-                <span className="tabnum text-zinc-300">
-                  {quote.margin_pct}%
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-600">Version</span>
-                <span className="tabnum text-zinc-300">v{quote.version}</span>
-              </div>
-              {quote.broker_name && (
-                <div className="flex justify-between">
-                  <span className="text-zinc-600">Broker</span>
-                  <span className="text-zinc-300">{quote.broker_name}</span>
-                </div>
-              )}
-              {quote.broker_commission_pct != null && (
-                <div className="flex justify-between">
-                  <span className="text-zinc-600">Broker commission</span>
-                  <span className="tabnum text-zinc-300">
-                    {quote.broker_commission_pct}%
-                  </span>
-                </div>
-              )}
-              {quote.quote_valid_until && (
-                <div className="flex justify-between">
-                  <span className="text-zinc-600">Valid until</span>
-                  <span className="text-xs text-zinc-500">
-                    {new Date(quote.quote_valid_until).toLocaleDateString()}
-                  </span>
-                </div>
-              )}
-              {quote.estimated_total_hours != null && (
-                <div className="flex justify-between">
-                  <span className="text-zinc-600">Est. total hours</span>
-                  <span className="tabnum text-zinc-300">
-                    {quote.estimated_total_hours} hrs
-                  </span>
-                </div>
-              )}
-              {quote.won_lost_reason && quote.status === "lost" && (
-                <div className="flex justify-between">
-                  <span className="text-zinc-600">Lost reason</span>
-                  <span className="text-zinc-300 capitalize">
-                    {quote.won_lost_reason.replace("_", " ")}
-                  </span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-zinc-600">Created</span>
-                <span className="text-xs text-zinc-500">
-                  {new Date(quote.created_at).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
+            <EditableQuoteDetails
+              quoteId={quote.id}
+              marginPct={quote.margin_pct}
+              notes={quote.notes}
+              brokerName={quote.broker_name}
+              brokerCommissionPct={quote.broker_commission_pct}
+              version={quote.version}
+              quoteValidUntil={quote.quote_valid_until}
+              estimatedTotalHours={quote.estimated_total_hours}
+              wonLostReason={quote.won_lost_reason}
+              status={quote.status}
+              createdAt={quote.created_at}
+            />
           </Card>
-
-          {quote.notes && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Notes</CardTitle>
-              </CardHeader>
-              <p className="text-sm leading-relaxed text-zinc-400">
-                {quote.notes}
-              </p>
-            </Card>
-          )}
         </div>
       </div>
     </div>

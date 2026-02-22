@@ -13,6 +13,13 @@ interface RouteParams {
 export async function PATCH(request: Request, { params }: RouteParams) {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { icao } = await params;
   const icaoUpper = icao.toUpperCase();
 
@@ -61,6 +68,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
 export async function GET(_request: Request, { params }: RouteParams) {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { icao } = await params;
 

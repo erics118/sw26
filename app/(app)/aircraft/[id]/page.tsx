@@ -3,7 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import type { Aircraft } from "@/lib/database.types";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
-import DeleteAircraftButton from "@/components/aircraft/DeleteAircraftButton";
+import DeleteAircraftButton from "@/components/Aircraft/DeleteAircraftButton";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -216,7 +216,11 @@ export default async function AircraftDetailPage({ params }: PageProps) {
             <div>
               <DetailRow
                 label="Added"
-                value={new Date(aircraft.created_at).toLocaleDateString()}
+                value={
+                  aircraft.created_at
+                    ? new Date(aircraft.created_at).toLocaleDateString()
+                    : "—"
+                }
               />
             </div>
           </Card>

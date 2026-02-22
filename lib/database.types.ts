@@ -3,552 +3,1061 @@ export type Json =
   | number
   | boolean
   | null
-  | { [key: string]: Json }
+  | { [key: string]: Json | undefined }
   | Json[];
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.1";
+  };
   public: {
     Tables: {
-      clients: {
-        Row: {
-          id: string;
-          created_at: string;
-          name: string;
-          company: string | null;
-          email: string | null;
-          phone: string | null;
-          nationality: string | null;
-          notes: string | null;
-          risk_flag: boolean;
-          vip: boolean;
-        };
-        Insert: {
-          id?: string;
-          created_at?: string;
-          name: string;
-          company?: string | null;
-          email?: string | null;
-          phone?: string | null;
-          nationality?: string | null;
-          notes?: string | null;
-          risk_flag?: boolean;
-          vip?: boolean;
-        };
-        Update: Partial<Database["public"]["Tables"]["clients"]["Insert"]>;
-        Relationships: [];
-      };
       aircraft: {
         Row: {
-          id: string;
-          created_at: string;
-          tail_number: string;
-          category: string;
-          range_nm: number;
           cabin_height_in: number | null;
-          pax_capacity: number;
-          fuel_burn_gph: number | null;
-          has_wifi: boolean;
-          has_bathroom: boolean;
-          home_base_icao: string | null;
-          notes: string | null;
-          status: string;
-          daily_available_hours: number;
-          // Added by migration 001_aircraft_performance
-          cruise_speed_kts: number | null;
-          max_fuel_capacity_gal: number | null;
-          min_runway_ft: number | null;
-          etops_certified: boolean;
-          max_payload_lbs: number | null;
-          reserve_fuel_gal: number | null;
-        };
-        Insert: {
-          id?: string;
-          created_at?: string;
-          tail_number: string;
           category: string;
-          range_nm: number;
-          cabin_height_in?: number | null;
-          pax_capacity: number;
-          fuel_burn_gph?: number | null;
-          has_wifi?: boolean;
-          has_bathroom?: boolean;
-          home_base_icao?: string | null;
-          notes?: string | null;
-          status?: string;
-          daily_available_hours?: number;
-          cruise_speed_kts?: number | null;
-          max_fuel_capacity_gal?: number | null;
-          min_runway_ft?: number | null;
-          etops_certified?: boolean;
-          max_payload_lbs?: number | null;
-          reserve_fuel_gal?: number | null;
-        };
-        Update: Partial<Database["public"]["Tables"]["aircraft"]["Insert"]>;
-        Relationships: [];
-      };
-      crew: {
-        Row: {
+          created_at: string | null;
+          cruise_speed_kts: number | null;
+          daily_available_hours: number | null;
+          etops_certified: boolean | null;
+          fuel_burn_gph: number | null;
+          has_bathroom: boolean | null;
+          has_wifi: boolean | null;
+          home_base_icao: string | null;
           id: string;
-          created_at: string;
-          name: string;
-          role: string;
-          ratings: string[] | null;
-          duty_hours_this_week: number;
-          last_duty_end: string | null;
-          available_hours_per_day: number;
-        };
-        Insert: {
-          id?: string;
-          created_at?: string;
-          name: string;
-          role: string;
-          ratings?: string[] | null;
-          duty_hours_this_week?: number;
-          last_duty_end?: string | null;
-          available_hours_per_day?: number;
-        };
-        Update: Partial<Database["public"]["Tables"]["crew"]["Insert"]>;
-        Relationships: [];
-      };
-      trips: {
-        Row: {
-          id: string;
-          created_at: string;
-          client_id: string | null;
-          raw_input: string | null;
-          legs: Json;
-          trip_type: string;
-          pax_adults: number;
-          pax_children: number;
-          pax_pets: number;
-          flexibility_hours: number;
-          flexibility_hours_return: number;
-          special_needs: string | null;
-          catering_notes: string | null;
-          luggage_notes: string | null;
-          preferred_category: string | null;
-          min_cabin_height_in: number | null;
-          wifi_required: boolean;
-          bathroom_required: boolean;
-          ai_extracted: boolean;
-          ai_confidence: Json | null;
-          request_source: string | null;
-          requested_departure_window_start: string | null;
-          requested_departure_window_end: string | null;
-          requested_return_window_start: string | null;
-          requested_return_window_end: string | null;
-          estimated_block_hours: number | null;
-          estimated_reposition_hours: number | null;
-          estimated_total_hours: number | null;
-        };
-        Insert: {
-          id?: string;
-          created_at?: string;
-          client_id?: string | null;
-          raw_input?: string | null;
-          legs?: Json;
-          trip_type?: string;
-          pax_adults?: number;
-          pax_children?: number;
-          pax_pets?: number;
-          flexibility_hours?: number;
-          flexibility_hours_return?: number;
-          special_needs?: string | null;
-          catering_notes?: string | null;
-          luggage_notes?: string | null;
-          preferred_category?: string | null;
-          min_cabin_height_in?: number | null;
-          wifi_required?: boolean;
-          bathroom_required?: boolean;
-          ai_extracted?: boolean;
-          ai_confidence?: Json | null;
-          request_source?: string | null;
-          requested_departure_window_start?: string | null;
-          requested_departure_window_end?: string | null;
-          requested_return_window_start?: string | null;
-          requested_return_window_end?: string | null;
-          estimated_block_hours?: number | null;
-          estimated_reposition_hours?: number | null;
-          estimated_total_hours?: number | null;
-        };
-        Update: Partial<Database["public"]["Tables"]["trips"]["Insert"]>;
-        Relationships: [];
-      };
-      quotes: {
-        Row: {
-          id: string;
-          created_at: string;
-          updated_at: string;
-          trip_id: string;
-          client_id: string | null;
-          aircraft_id: string | null;
-          status: string;
-          version: number;
-          margin_pct: number;
-          currency: string;
-          broker_name: string | null;
-          broker_commission_pct: number | null;
+          max_fuel_capacity_gal: number | null;
+          max_payload_lbs: number | null;
+          min_runway_ft: number | null;
           notes: string | null;
-          sent_at: string | null;
-          confirmed_at: string | null;
-          // Quote stage
-          quote_valid_until: string | null;
-          chosen_aircraft_category: string | null;
-          estimated_total_hours: number | null;
-          won_lost_reason: string | null;
-          // Confirmed booking
-          scheduled_departure_time: string | null;
-          scheduled_arrival_time: string | null;
-          scheduled_total_hours: number | null;
-          // Post-flight actuals
-          actual_departure_time: string | null;
-          actual_arrival_time: string | null;
-          actual_block_hours: number | null;
-          actual_reposition_hours: number | null;
-          actual_total_hours: number | null;
-          delay_reason_code: string | null;
+          pax_capacity: number;
+          range_nm: number;
+          reserve_fuel_gal: number | null;
+          status: string;
+          tail_number: string;
         };
         Insert: {
+          cabin_height_in?: number | null;
+          category: string;
+          created_at?: string | null;
+          cruise_speed_kts?: number | null;
+          daily_available_hours?: number | null;
+          etops_certified?: boolean | null;
+          fuel_burn_gph?: number | null;
+          has_bathroom?: boolean | null;
+          has_wifi?: boolean | null;
+          home_base_icao?: string | null;
           id?: string;
-          created_at?: string;
-          updated_at?: string;
-          trip_id: string;
-          client_id?: string | null;
-          aircraft_id?: string | null;
-          status?: string;
-          version?: number;
-          margin_pct?: number;
-          currency?: string;
-          broker_name?: string | null;
-          broker_commission_pct?: number | null;
+          max_fuel_capacity_gal?: number | null;
+          max_payload_lbs?: number | null;
+          min_runway_ft?: number | null;
           notes?: string | null;
-          sent_at?: string | null;
-          confirmed_at?: string | null;
-          quote_valid_until?: string | null;
-          chosen_aircraft_category?: string | null;
-          estimated_total_hours?: number | null;
-          won_lost_reason?: string | null;
-          scheduled_departure_time?: string | null;
-          scheduled_arrival_time?: string | null;
-          scheduled_total_hours?: number | null;
-          actual_departure_time?: string | null;
-          actual_arrival_time?: string | null;
-          actual_block_hours?: number | null;
-          actual_reposition_hours?: number | null;
-          actual_total_hours?: number | null;
-          delay_reason_code?: string | null;
+          pax_capacity: number;
+          range_nm: number;
+          reserve_fuel_gal?: number | null;
+          status?: string;
+          tail_number: string;
         };
-        Update: Partial<Database["public"]["Tables"]["quotes"]["Insert"]>;
-        Relationships: [];
-      };
-      quote_costs: {
-        Row: {
-          id: string;
-          quote_id: string;
-          fuel_cost: number;
-          fbo_fees: number;
-          repositioning_cost: number;
-          repositioning_hours: number;
-          permit_fees: number;
-          crew_overnight_cost: number;
-          catering_cost: number;
-          peak_day_surcharge: number;
-          subtotal: number;
-          margin_amount: number;
-          tax: number;
-          total: number;
-          per_leg_breakdown: Json;
-        };
-        Insert: {
+        Update: {
+          cabin_height_in?: number | null;
+          category?: string;
+          created_at?: string | null;
+          cruise_speed_kts?: number | null;
+          daily_available_hours?: number | null;
+          etops_certified?: boolean | null;
+          fuel_burn_gph?: number | null;
+          has_bathroom?: boolean | null;
+          has_wifi?: boolean | null;
+          home_base_icao?: string | null;
           id?: string;
-          quote_id: string;
-          fuel_cost?: number;
-          fbo_fees?: number;
-          repositioning_cost?: number;
-          repositioning_hours?: number;
-          permit_fees?: number;
-          crew_overnight_cost?: number;
-          catering_cost?: number;
-          peak_day_surcharge?: number;
-          subtotal?: number;
-          margin_amount?: number;
-          tax?: number;
-          total?: number;
-          per_leg_breakdown?: Json;
+          max_fuel_capacity_gal?: number | null;
+          max_payload_lbs?: number | null;
+          min_runway_ft?: number | null;
+          notes?: string | null;
+          pax_capacity?: number;
+          range_nm?: number;
+          reserve_fuel_gal?: number | null;
+          status?: string;
+          tail_number?: string;
         };
-        Update: Partial<Database["public"]["Tables"]["quote_costs"]["Insert"]>;
         Relationships: [];
       };
       aircraft_maintenance: {
         Row: {
-          id: string;
           aircraft_id: string;
-          start_time: string;
+          created_at: string | null;
           end_time: string;
+          id: string;
           maintenance_type: string;
           notes: string | null;
-          created_at: string;
+          start_time: string;
         };
         Insert: {
-          id?: string;
           aircraft_id: string;
-          start_time: string;
+          created_at?: string | null;
           end_time: string;
+          id?: string;
           maintenance_type?: string;
           notes?: string | null;
-          created_at?: string;
+          start_time: string;
         };
-        Update: Partial<
-          Database["public"]["Tables"]["aircraft_maintenance"]["Insert"]
-        >;
-        Relationships: [];
+        Update: {
+          aircraft_id?: string;
+          created_at?: string | null;
+          end_time?: string;
+          id?: string;
+          maintenance_type?: string;
+          notes?: string | null;
+          start_time?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "aircraft_maintenance_aircraft_id_fkey";
+            columns: ["aircraft_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft";
+            referencedColumns: ["id"];
+          },
+        ];
       };
-      fleet_forecast_overrides: {
+      aircraft_positions: {
         Row: {
+          aircraft_id: string;
+          altitude_ft: number;
+          callsign: string | null;
+          client_name: string | null;
+          destination_icao: string | null;
+          eta: string | null;
+          etd: string | null;
+          groundspeed_kts: number;
+          heading: number;
           id: string;
-          date: string;
-          aircraft_category: string;
-          peak_multiplier: number;
-          reason: string | null;
-          created_at: string;
+          in_air: boolean;
+          lat: number;
+          lon: number;
+          origin_icao: string | null;
+          pax: number;
+          reasons: string[];
+          status: string;
+          trail: Json;
+          updated_at: string;
         };
         Insert: {
+          aircraft_id: string;
+          altitude_ft?: number;
+          callsign?: string | null;
+          client_name?: string | null;
+          destination_icao?: string | null;
+          eta?: string | null;
+          etd?: string | null;
+          groundspeed_kts?: number;
+          heading?: number;
           id?: string;
-          date: string;
-          aircraft_category: string;
-          peak_multiplier?: number;
-          reason?: string | null;
-          created_at?: string;
+          in_air?: boolean;
+          lat: number;
+          lon: number;
+          origin_icao?: string | null;
+          pax?: number;
+          reasons?: string[];
+          status?: string;
+          trail?: Json;
+          updated_at?: string;
         };
-        Update: Partial<
-          Database["public"]["Tables"]["fleet_forecast_overrides"]["Insert"]
-        >;
+        Update: {
+          aircraft_id?: string;
+          altitude_ft?: number;
+          callsign?: string | null;
+          client_name?: string | null;
+          destination_icao?: string | null;
+          eta?: string | null;
+          etd?: string | null;
+          groundspeed_kts?: number;
+          heading?: number;
+          id?: string;
+          in_air?: boolean;
+          lat?: number;
+          lon?: number;
+          origin_icao?: string | null;
+          pax?: number;
+          reasons?: string[];
+          status?: string;
+          trail?: Json;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "aircraft_positions_aircraft_id_fkey";
+            columns: ["aircraft_id"];
+            isOneToOne: true;
+            referencedRelation: "aircraft";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      airports: {
+        Row: {
+          city: string | null;
+          country_code: string;
+          created_at: string;
+          curfew_utc: Json | null;
+          customs_available: boolean;
+          deicing_available: boolean;
+          elevation_ft: number | null;
+          fbo_fee_usd: number | null;
+          fuel_jet_a: boolean;
+          fuel_price_updated_at: string | null;
+          fuel_price_usd_gal: number | null;
+          iata: string | null;
+          icao: string;
+          lat: number;
+          lon: number;
+          longest_runway_ft: number | null;
+          name: string;
+          notes: string | null;
+          operating_hours_utc: Json | null;
+          slot_required: boolean;
+          updated_at: string;
+        };
+        Insert: {
+          city?: string | null;
+          country_code: string;
+          created_at?: string;
+          curfew_utc?: Json | null;
+          customs_available?: boolean;
+          deicing_available?: boolean;
+          elevation_ft?: number | null;
+          fbo_fee_usd?: number | null;
+          fuel_jet_a?: boolean;
+          fuel_price_updated_at?: string | null;
+          fuel_price_usd_gal?: number | null;
+          iata?: string | null;
+          icao: string;
+          lat: number;
+          lon: number;
+          longest_runway_ft?: number | null;
+          name: string;
+          notes?: string | null;
+          operating_hours_utc?: Json | null;
+          slot_required?: boolean;
+          updated_at?: string;
+        };
+        Update: {
+          city?: string | null;
+          country_code?: string;
+          created_at?: string;
+          curfew_utc?: Json | null;
+          customs_available?: boolean;
+          deicing_available?: boolean;
+          elevation_ft?: number | null;
+          fbo_fee_usd?: number | null;
+          fuel_jet_a?: boolean;
+          fuel_price_updated_at?: string | null;
+          fuel_price_usd_gal?: number | null;
+          iata?: string | null;
+          icao?: string;
+          lat?: number;
+          lon?: number;
+          longest_runway_ft?: number | null;
+          name?: string;
+          notes?: string | null;
+          operating_hours_utc?: Json | null;
+          slot_required?: boolean;
+          updated_at?: string;
+        };
         Relationships: [];
       };
       audit_logs: {
         Row: {
-          id: string;
-          created_at: string;
-          user_id: string | null;
           action: string;
-          entity_type: string | null;
-          entity_id: string | null;
-          payload: Json | null;
-          ai_generated: boolean;
+          ai_generated: boolean | null;
           ai_model: string | null;
-          human_verified: boolean;
+          created_at: string | null;
+          entity_id: string | null;
+          entity_type: string | null;
+          human_verified: boolean | null;
+          id: string;
+          payload: Json | null;
+          user_id: string | null;
         };
         Insert: {
-          id?: string;
-          created_at?: string;
-          user_id?: string | null;
           action: string;
-          entity_type?: string | null;
-          entity_id?: string | null;
-          payload?: Json | null;
-          ai_generated?: boolean;
+          ai_generated?: boolean | null;
           ai_model?: string | null;
-          human_verified?: boolean;
+          created_at?: string | null;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          human_verified?: boolean | null;
+          id?: string;
+          payload?: Json | null;
+          user_id?: string | null;
         };
-        Update: Partial<Database["public"]["Tables"]["audit_logs"]["Insert"]>;
+        Update: {
+          action?: string;
+          ai_generated?: boolean | null;
+          ai_model?: string | null;
+          created_at?: string | null;
+          entity_id?: string | null;
+          entity_type?: string | null;
+          human_verified?: boolean | null;
+          id?: string;
+          payload?: Json | null;
+          user_id?: string | null;
+        };
         Relationships: [];
       };
-      airports: {
+      clients: {
         Row: {
-          icao: string;
-          iata: string | null;
+          company: string | null;
+          created_at: string | null;
+          email: string | null;
+          id: string;
           name: string;
-          city: string | null;
-          country_code: string;
-          lat: number;
-          lon: number;
-          elevation_ft: number | null;
-          longest_runway_ft: number | null;
-          fuel_jet_a: boolean;
-          fuel_price_usd_gal: number | null;
-          fuel_price_updated_at: string | null;
-          fbo_fee_usd: number | null;
-          operating_hours_utc: Json | null;
-          curfew_utc: Json | null;
-          customs_available: boolean;
-          deicing_available: boolean;
-          slot_required: boolean;
+          nationality: string | null;
           notes: string | null;
-          created_at: string;
-          updated_at: string;
+          phone: string | null;
+          risk_flag: boolean | null;
+          vip: boolean | null;
         };
         Insert: {
-          icao: string;
-          iata?: string | null;
+          company?: string | null;
+          created_at?: string | null;
+          email?: string | null;
+          id?: string;
           name: string;
-          city?: string | null;
-          country_code: string;
-          lat: number;
-          lon: number;
-          elevation_ft?: number | null;
-          longest_runway_ft?: number | null;
-          fuel_jet_a?: boolean;
-          fuel_price_usd_gal?: number | null;
-          fuel_price_updated_at?: string | null;
-          fbo_fee_usd?: number | null;
-          operating_hours_utc?: Json | null;
-          curfew_utc?: Json | null;
-          customs_available?: boolean;
-          deicing_available?: boolean;
-          slot_required?: boolean;
+          nationality?: string | null;
           notes?: string | null;
-          created_at?: string;
-          updated_at?: string;
+          phone?: string | null;
+          risk_flag?: boolean | null;
+          vip?: boolean | null;
         };
-        Update: Partial<Database["public"]["Tables"]["airports"]["Insert"]>;
+        Update: {
+          company?: string | null;
+          created_at?: string | null;
+          email?: string | null;
+          id?: string;
+          name?: string;
+          nationality?: string | null;
+          notes?: string | null;
+          phone?: string | null;
+          risk_flag?: boolean | null;
+          vip?: boolean | null;
+        };
+        Relationships: [];
+      };
+      crew: {
+        Row: {
+          available_hours_per_day: number | null;
+          created_at: string | null;
+          duty_hours_this_week: number | null;
+          id: string;
+          last_duty_end: string | null;
+          name: string;
+          ratings: string[] | null;
+          role: string;
+        };
+        Insert: {
+          available_hours_per_day?: number | null;
+          created_at?: string | null;
+          duty_hours_this_week?: number | null;
+          id?: string;
+          last_duty_end?: string | null;
+          name: string;
+          ratings?: string[] | null;
+          role: string;
+        };
+        Update: {
+          available_hours_per_day?: number | null;
+          created_at?: string | null;
+          duty_hours_this_week?: number | null;
+          id?: string;
+          last_duty_end?: string | null;
+          name?: string;
+          ratings?: string[] | null;
+          role?: string;
+        };
+        Relationships: [];
+      };
+      empty_leg_offers: {
+        Row: {
+          aircraft_id: string;
+          created_at: string | null;
+          discount_pct: number;
+          from_icao: string;
+          id: string;
+          offer_date: string;
+          reason: string;
+          status: string;
+          to_icao: string;
+        };
+        Insert: {
+          aircraft_id: string;
+          created_at?: string | null;
+          discount_pct?: number;
+          from_icao: string;
+          id?: string;
+          offer_date: string;
+          reason?: string;
+          status?: string;
+          to_icao: string;
+        };
+        Update: {
+          aircraft_id?: string;
+          created_at?: string | null;
+          discount_pct?: number;
+          from_icao?: string;
+          id?: string;
+          offer_date?: string;
+          reason?: string;
+          status?: string;
+          to_icao?: string;
+        };
+        Relationships: [];
+      };
+      fleet_forecast_overrides: {
+        Row: {
+          aircraft_category: string;
+          created_at: string | null;
+          date: string;
+          id: string;
+          peak_multiplier: number;
+          reason: string | null;
+        };
+        Insert: {
+          aircraft_category: string;
+          created_at?: string | null;
+          date: string;
+          id?: string;
+          peak_multiplier?: number;
+          reason?: string | null;
+        };
+        Update: {
+          aircraft_category?: string;
+          created_at?: string | null;
+          date?: string;
+          id?: string;
+          peak_multiplier?: number;
+          reason?: string | null;
+        };
         Relationships: [];
       };
       forecast_signals: {
         Row: {
-          id: string;
-          signal_type: string;
           aircraft_category: string | null;
-          date_range_start: string;
+          confidence: string;
+          created_at: string;
           date_range_end: string;
-          confidence: "high" | "medium" | "low";
-          reason_codes: string[];
+          date_range_start: string;
+          id: string;
           model_version: string;
           payload: Json;
-          created_at: string;
+          reason_codes: string[];
+          signal_type: string;
         };
         Insert: {
-          id?: string;
-          signal_type: string;
           aircraft_category?: string | null;
-          date_range_start: string;
+          confidence?: string;
+          created_at?: string;
           date_range_end: string;
-          confidence?: "high" | "medium" | "low";
-          reason_codes?: string[];
+          date_range_start: string;
+          id?: string;
           model_version?: string;
           payload?: Json;
-          created_at?: string;
+          reason_codes?: string[];
+          signal_type: string;
         };
-        Update: Partial<
-          Database["public"]["Tables"]["forecast_signals"]["Insert"]
-        >;
+        Update: {
+          aircraft_category?: string | null;
+          confidence?: string;
+          created_at?: string;
+          date_range_end?: string;
+          date_range_start?: string;
+          id?: string;
+          model_version?: string;
+          payload?: Json;
+          reason_codes?: string[];
+          signal_type?: string;
+        };
         Relationships: [];
+      };
+      quote_costs: {
+        Row: {
+          catering_cost: number | null;
+          crew_overnight_cost: number | null;
+          fbo_fees: number | null;
+          fuel_cost: number | null;
+          id: string;
+          margin_amount: number | null;
+          peak_day_surcharge: number | null;
+          per_leg_breakdown: Json | null;
+          permit_fees: number | null;
+          quote_id: string;
+          repositioning_cost: number | null;
+          repositioning_hours: number | null;
+          subtotal: number | null;
+          tax: number | null;
+          total: number | null;
+        };
+        Insert: {
+          catering_cost?: number | null;
+          crew_overnight_cost?: number | null;
+          fbo_fees?: number | null;
+          fuel_cost?: number | null;
+          id?: string;
+          margin_amount?: number | null;
+          peak_day_surcharge?: number | null;
+          per_leg_breakdown?: Json | null;
+          permit_fees?: number | null;
+          quote_id: string;
+          repositioning_cost?: number | null;
+          repositioning_hours?: number | null;
+          subtotal?: number | null;
+          tax?: number | null;
+          total?: number | null;
+        };
+        Update: {
+          catering_cost?: number | null;
+          crew_overnight_cost?: number | null;
+          fbo_fees?: number | null;
+          fuel_cost?: number | null;
+          id?: string;
+          margin_amount?: number | null;
+          peak_day_surcharge?: number | null;
+          per_leg_breakdown?: Json | null;
+          permit_fees?: number | null;
+          quote_id?: string;
+          repositioning_cost?: number | null;
+          repositioning_hours?: number | null;
+          subtotal?: number | null;
+          tax?: number | null;
+          total?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quote_costs_quote_id_fkey";
+            columns: ["quote_id"];
+            isOneToOne: false;
+            referencedRelation: "quotes";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      quotes: {
+        Row: {
+          actual_arrival_time: string | null;
+          actual_block_hours: number | null;
+          actual_departure_time: string | null;
+          actual_reposition_hours: number | null;
+          actual_total_hours: number | null;
+          aircraft_id: string | null;
+          broker_commission_pct: number | null;
+          broker_name: string | null;
+          chosen_aircraft_category: string | null;
+          client_id: string | null;
+          confirmed_at: string | null;
+          created_at: string | null;
+          currency: string | null;
+          delay_reason_code: string | null;
+          estimated_total_hours: number | null;
+          id: string;
+          margin_pct: number | null;
+          notes: string | null;
+          quote_valid_until: string | null;
+          scheduled_arrival_time: string | null;
+          scheduled_departure_time: string | null;
+          scheduled_total_hours: number | null;
+          sent_at: string | null;
+          status: string;
+          trip_id: string;
+          updated_at: string | null;
+          version: number | null;
+          won_lost_reason: string | null;
+        };
+        Insert: {
+          actual_arrival_time?: string | null;
+          actual_block_hours?: number | null;
+          actual_departure_time?: string | null;
+          actual_reposition_hours?: number | null;
+          actual_total_hours?: number | null;
+          aircraft_id?: string | null;
+          broker_commission_pct?: number | null;
+          broker_name?: string | null;
+          chosen_aircraft_category?: string | null;
+          client_id?: string | null;
+          confirmed_at?: string | null;
+          created_at?: string | null;
+          currency?: string | null;
+          delay_reason_code?: string | null;
+          estimated_total_hours?: number | null;
+          id?: string;
+          margin_pct?: number | null;
+          notes?: string | null;
+          quote_valid_until?: string | null;
+          scheduled_arrival_time?: string | null;
+          scheduled_departure_time?: string | null;
+          scheduled_total_hours?: number | null;
+          sent_at?: string | null;
+          status?: string;
+          trip_id: string;
+          updated_at?: string | null;
+          version?: number | null;
+          won_lost_reason?: string | null;
+        };
+        Update: {
+          actual_arrival_time?: string | null;
+          actual_block_hours?: number | null;
+          actual_departure_time?: string | null;
+          actual_reposition_hours?: number | null;
+          actual_total_hours?: number | null;
+          aircraft_id?: string | null;
+          broker_commission_pct?: number | null;
+          broker_name?: string | null;
+          chosen_aircraft_category?: string | null;
+          client_id?: string | null;
+          confirmed_at?: string | null;
+          created_at?: string | null;
+          currency?: string | null;
+          delay_reason_code?: string | null;
+          estimated_total_hours?: number | null;
+          id?: string;
+          margin_pct?: number | null;
+          notes?: string | null;
+          quote_valid_until?: string | null;
+          scheduled_arrival_time?: string | null;
+          scheduled_departure_time?: string | null;
+          scheduled_total_hours?: number | null;
+          sent_at?: string | null;
+          status?: string;
+          trip_id?: string;
+          updated_at?: string | null;
+          version?: number | null;
+          won_lost_reason?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "quotes_aircraft_id_fkey";
+            columns: ["aircraft_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotes_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "quotes_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       recommendation_outcomes: {
         Row: {
-          id: string;
-          recommendation_type: "reposition" | "maintenance_window";
-          aircraft_id: string | null;
-          tail_number: string | null;
-          recommended_at: string;
           accepted_at: string | null;
+          aircraft_id: string | null;
           executed_at: string | null;
-          realized_revenue_delta: number | null;
-          realized_hours_gained: number | null;
-          outcome_status:
-            | "pending"
-            | "accepted"
-            | "rejected"
-            | "executed"
-            | "abandoned";
+          id: string;
+          outcome_status: string;
           payload: Json;
+          realized_hours_gained: number | null;
+          realized_revenue_delta: number | null;
+          recommendation_type: string;
+          recommended_at: string;
+          tail_number: string | null;
         };
         Insert: {
-          id?: string;
-          recommendation_type: "reposition" | "maintenance_window";
-          aircraft_id?: string | null;
-          tail_number?: string | null;
-          recommended_at?: string;
           accepted_at?: string | null;
+          aircraft_id?: string | null;
           executed_at?: string | null;
-          realized_revenue_delta?: number | null;
-          realized_hours_gained?: number | null;
-          outcome_status?:
-            | "pending"
-            | "accepted"
-            | "rejected"
-            | "executed"
-            | "abandoned";
+          id?: string;
+          outcome_status?: string;
           payload?: Json;
+          realized_hours_gained?: number | null;
+          realized_revenue_delta?: number | null;
+          recommendation_type: string;
+          recommended_at?: string;
+          tail_number?: string | null;
         };
-        Update: Partial<
-          Database["public"]["Tables"]["recommendation_outcomes"]["Insert"]
-        >;
-        Relationships: [];
+        Update: {
+          accepted_at?: string | null;
+          aircraft_id?: string | null;
+          executed_at?: string | null;
+          id?: string;
+          outcome_status?: string;
+          payload?: Json;
+          realized_hours_gained?: number | null;
+          realized_revenue_delta?: number | null;
+          recommendation_type?: string;
+          recommended_at?: string;
+          tail_number?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "recommendation_outcomes_aircraft_id_fkey";
+            columns: ["aircraft_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       route_plans: {
         Row: {
-          id: string;
-          created_at: string;
-          quote_id: string | null;
-          trip_id: string | null;
           aircraft_id: string | null;
-          optimization_mode: string;
-          route_legs: Json;
-          refuel_stops: Json;
-          weather_summary: Json;
-          notam_alerts: Json;
           alternatives: Json;
+          computed_at: string;
           cost_breakdown: Json | null;
+          created_at: string;
+          id: string;
+          is_stale: boolean;
+          notam_alerts: Json;
+          notam_fetched_at: string | null;
+          on_time_probability: number | null;
+          optimization_mode: string;
+          quote_id: string | null;
+          refuel_stops: Json;
+          risk_score: number | null;
+          route_legs: Json;
           total_distance_nm: number | null;
           total_flight_time_hr: number | null;
           total_fuel_cost: number | null;
-          risk_score: number | null;
-          on_time_probability: number | null;
-          computed_at: string;
+          trip_id: string | null;
           weather_fetched_at: string | null;
-          notam_fetched_at: string | null;
-          is_stale: boolean;
+          weather_summary: Json;
         };
         Insert: {
-          id?: string;
-          created_at?: string;
-          quote_id?: string | null;
-          trip_id?: string | null;
           aircraft_id?: string | null;
-          optimization_mode: string;
-          route_legs: Json;
-          refuel_stops: Json;
-          weather_summary: Json;
-          notam_alerts: Json;
-          alternatives: Json;
+          alternatives?: Json;
+          computed_at?: string;
           cost_breakdown?: Json | null;
+          created_at?: string;
+          id?: string;
+          is_stale?: boolean;
+          notam_alerts?: Json;
+          notam_fetched_at?: string | null;
+          on_time_probability?: number | null;
+          optimization_mode?: string;
+          quote_id?: string | null;
+          refuel_stops?: Json;
+          risk_score?: number | null;
+          route_legs?: Json;
           total_distance_nm?: number | null;
           total_flight_time_hr?: number | null;
           total_fuel_cost?: number | null;
-          risk_score?: number | null;
-          on_time_probability?: number | null;
-          computed_at?: string;
+          trip_id?: string | null;
           weather_fetched_at?: string | null;
-          notam_fetched_at?: string | null;
-          is_stale?: boolean;
+          weather_summary?: Json;
         };
-        Update: Partial<Database["public"]["Tables"]["route_plans"]["Insert"]>;
-        Relationships: [];
+        Update: {
+          aircraft_id?: string | null;
+          alternatives?: Json;
+          computed_at?: string;
+          cost_breakdown?: Json | null;
+          created_at?: string;
+          id?: string;
+          is_stale?: boolean;
+          notam_alerts?: Json;
+          notam_fetched_at?: string | null;
+          on_time_probability?: number | null;
+          optimization_mode?: string;
+          quote_id?: string | null;
+          refuel_stops?: Json;
+          risk_score?: number | null;
+          route_legs?: Json;
+          total_distance_nm?: number | null;
+          total_flight_time_hr?: number | null;
+          total_fuel_cost?: number | null;
+          trip_id?: string | null;
+          weather_fetched_at?: string | null;
+          weather_summary?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "route_plans_aircraft_id_fkey";
+            columns: ["aircraft_id"];
+            isOneToOne: false;
+            referencedRelation: "aircraft";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "route_plans_quote_id_fkey";
+            columns: ["quote_id"];
+            isOneToOne: false;
+            referencedRelation: "quotes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "route_plans_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      trips: {
+        Row: {
+          ai_confidence: Json | null;
+          ai_extracted: boolean | null;
+          bathroom_required: boolean | null;
+          catering_notes: string | null;
+          client_id: string | null;
+          created_at: string | null;
+          estimated_block_hours: number | null;
+          estimated_reposition_hours: number | null;
+          estimated_total_hours: number | null;
+          flexibility_hours: number | null;
+          flexibility_hours_return: number | null;
+          id: string;
+          legs: Json;
+          luggage_notes: string | null;
+          min_cabin_height_in: number | null;
+          pax_adults: number | null;
+          pax_children: number | null;
+          pax_pets: number | null;
+          preferred_category: string | null;
+          raw_input: string | null;
+          request_source: string | null;
+          requested_departure_window_end: string | null;
+          requested_departure_window_start: string | null;
+          requested_return_window_end: string | null;
+          requested_return_window_start: string | null;
+          special_needs: string | null;
+          trip_type: string;
+          wifi_required: boolean | null;
+        };
+        Insert: {
+          ai_confidence?: Json | null;
+          ai_extracted?: boolean | null;
+          bathroom_required?: boolean | null;
+          catering_notes?: string | null;
+          client_id?: string | null;
+          created_at?: string | null;
+          estimated_block_hours?: number | null;
+          estimated_reposition_hours?: number | null;
+          estimated_total_hours?: number | null;
+          flexibility_hours?: number | null;
+          flexibility_hours_return?: number | null;
+          id?: string;
+          legs?: Json;
+          luggage_notes?: string | null;
+          min_cabin_height_in?: number | null;
+          pax_adults?: number | null;
+          pax_children?: number | null;
+          pax_pets?: number | null;
+          preferred_category?: string | null;
+          raw_input?: string | null;
+          request_source?: string | null;
+          requested_departure_window_end?: string | null;
+          requested_departure_window_start?: string | null;
+          requested_return_window_end?: string | null;
+          requested_return_window_start?: string | null;
+          special_needs?: string | null;
+          trip_type?: string;
+          wifi_required?: boolean | null;
+        };
+        Update: {
+          ai_confidence?: Json | null;
+          ai_extracted?: boolean | null;
+          bathroom_required?: boolean | null;
+          catering_notes?: string | null;
+          client_id?: string | null;
+          created_at?: string | null;
+          estimated_block_hours?: number | null;
+          estimated_reposition_hours?: number | null;
+          estimated_total_hours?: number | null;
+          flexibility_hours?: number | null;
+          flexibility_hours_return?: number | null;
+          id?: string;
+          legs?: Json;
+          luggage_notes?: string | null;
+          min_cabin_height_in?: number | null;
+          pax_adults?: number | null;
+          pax_children?: number | null;
+          pax_pets?: number | null;
+          preferred_category?: string | null;
+          raw_input?: string | null;
+          request_source?: string | null;
+          requested_departure_window_end?: string | null;
+          requested_departure_window_start?: string | null;
+          requested_return_window_end?: string | null;
+          requested_return_window_start?: string | null;
+          special_needs?: string | null;
+          trip_type?: string;
+          wifi_required?: boolean | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "trips_client_id_fkey";
+            columns: ["client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
-    Enums: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
+    Enums: {
+      [_ in never]: never;
+    };
+    CompositeTypes: {
+      [_ in never]: never;
+    };
   };
+};
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<
+  keyof Database,
+  "public"
+>];
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
 }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R;
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R;
+      }
+      ? R
+      : never
+    : never;
 
-// Convenience row types
-export type Client = Database["public"]["Tables"]["clients"]["Row"];
-export type Aircraft = Database["public"]["Tables"]["aircraft"]["Row"];
-export type Crew = Database["public"]["Tables"]["crew"]["Row"];
-export type Trip = Database["public"]["Tables"]["trips"]["Row"];
-export type Quote = Database["public"]["Tables"]["quotes"]["Row"];
-export type QuoteCost = Database["public"]["Tables"]["quote_costs"]["Row"];
-export type AuditLog = Database["public"]["Tables"]["audit_logs"]["Row"];
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I;
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I;
+      }
+      ? I
+      : never
+    : never;
 
-export type AircraftMaintenance =
-  Database["public"]["Tables"]["aircraft_maintenance"]["Row"];
-export type FleetForecastOverride =
-  Database["public"]["Tables"]["fleet_forecast_overrides"]["Row"];
-export type ForecastSignal =
-  Database["public"]["Tables"]["forecast_signals"]["Row"];
-export type RecommendationOutcome =
-  Database["public"]["Tables"]["recommendation_outcomes"]["Row"];
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U;
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U;
+      }
+      ? U
+      : never
+    : never;
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never;
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals;
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never;
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const;
+
+// Convenience row types for app code
+export type Client = Tables<"clients">;
+export type Aircraft = Tables<"aircraft">;
+export type AircraftPosition = Tables<"aircraft_positions">;
+export type Crew = Tables<"crew">;
+export type Trip = Tables<"trips">;
+export type Quote = Tables<"quotes">;
+export type QuoteCost = Tables<"quote_costs">;
+export type AuditLog = Tables<"audit_logs">;
+export type AircraftMaintenance = Tables<"aircraft_maintenance">;
+export type FleetForecastOverride = Tables<"fleet_forecast_overrides">;
+export type ForecastSignal = Tables<"forecast_signals">;
+export type RecommendationOutcome = Tables<"recommendation_outcomes">;
+export type RoutePlan = Tables<"route_plans">;
 
 export type TripLeg = {
   from_icao: string;
@@ -565,53 +1074,3 @@ export type QuoteStatus =
   | "confirmed"
   | "lost"
   | "completed";
-
-// ─── Airport ──────────────────────────────────────────────────────────────────
-export type Airport = {
-  icao: string;
-  iata: string | null;
-  name: string;
-  city: string | null;
-  country_code: string;
-  lat: number;
-  lon: number;
-  elevation_ft: number | null;
-  longest_runway_ft: number | null;
-  fuel_jet_a: boolean;
-  fuel_price_usd_gal: number | null;
-  fuel_price_updated_at: string | null;
-  fbo_fee_usd: number | null;
-  operating_hours_utc: { from: string; to: string } | null;
-  curfew_utc: { from: string; to: string } | null;
-  customs_available: boolean;
-  deicing_available: boolean;
-  slot_required: boolean;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-// ─── RoutePlan ────────────────────────────────────────────────────────────────
-export type RoutePlan = {
-  id: string;
-  created_at: string;
-  quote_id: string | null;
-  trip_id: string | null;
-  aircraft_id: string | null;
-  optimization_mode: string;
-  route_legs: Json;
-  refuel_stops: Json;
-  weather_summary: Json;
-  notam_alerts: Json;
-  alternatives: Json;
-  cost_breakdown: Json | null;
-  total_distance_nm: number | null;
-  total_flight_time_hr: number | null;
-  total_fuel_cost: number | null;
-  risk_score: number | null;
-  on_time_probability: number | null;
-  computed_at: string;
-  weather_fetched_at: string | null;
-  notam_fetched_at: string | null;
-  is_stale: boolean;
-};

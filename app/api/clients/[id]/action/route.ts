@@ -9,6 +9,13 @@ export async function POST(
   const { id } = await params;
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const [{ data: clientRow }, { data: quotes }] = await Promise.all([
     supabase.from("clients").select("name").eq("id", id).single(),
     supabase

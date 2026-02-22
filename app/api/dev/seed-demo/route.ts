@@ -1,11 +1,12 @@
 /**
  * POST /api/dev/seed-demo
  *
- * Seeds a full realistic demo environment: clients, aircraft, pipeline quotes,
+ * Seeds a full realistic demo once: clients, aircraft, pipeline quotes,
  * and 6 weeks of completed flight history for forecasting charts.
+ * Does not clear or reset data; if clients already exist, skips seeding.
+ * Schema changes should be done via migrations, not this endpoint.
  *
  * Uses SUPABASE_SERVICE_ROLE_KEY to bypass RLS.
- * Safe to call once per fresh environment.
  */
 
 import { NextResponse } from "next/server";
@@ -14,63 +15,87 @@ import type { Database, Json } from "@/lib/database.types";
 
 // ─── Seed data ───────────────────────────────────────────────────────────────
 
-const CLIENTS = [
+/** Client seed: name required; created_at ISO string for realistic onboarding dates. */
+const CLIENTS: Array<{
+  name: string;
+  company: string | null;
+  email: string | null;
+  phone: string | null;
+  nationality: string | null;
+  notes: string | null;
+  risk_flag: boolean;
+  vip: boolean;
+  created_at: string;
+}> = [
   {
     name: "Apex Capital Group",
     company: "Apex Capital Group",
     email: "apex@apexcap.com",
     phone: "+1 (212) 555-0101",
-    vip: true,
-    risk_flag: false,
+    nationality: null,
     notes: "Preferred operator since 2019. Always books G550 or larger.",
+    risk_flag: false,
+    vip: true,
+    created_at: "2021-03-15T14:00:00.000Z",
   },
   {
     name: "James Harrington",
     company: "Meridian Ventures",
     email: "james@meridianvc.com",
     phone: "+1 (212) 555-0174",
-    vip: true,
-    risk_flag: false,
+    nationality: null,
     notes: "Managing partner. Requires large cabin and WiFi.",
+    risk_flag: false,
+    vip: true,
+    created_at: "2022-08-20T10:30:00.000Z",
   },
   {
     name: "Summit Partners LLC",
     company: "Summit Partners LLC",
     email: "summit@summitpartners.com",
     phone: "+1 (617) 555-0233",
-    vip: false,
-    risk_flag: false,
+    nationality: null,
     notes: null,
+    risk_flag: false,
+    vip: false,
+    created_at: "2023-01-10T09:00:00.000Z",
   },
   {
     name: "Atlas Holdings",
     company: "Atlas Holdings",
     email: "atlas@atlashold.com",
     phone: "+1 (305) 555-0318",
-    vip: false,
-    risk_flag: false,
+    nationality: null,
     notes: null,
+    risk_flag: false,
+    vip: false,
+    created_at: "2023-06-12T11:00:00.000Z",
   },
   {
     name: "Centurion Management",
     company: "Centurion Management",
     email: "info@centurionmgmt.com",
     phone: "+1 (312) 555-0422",
-    vip: false,
-    risk_flag: false,
+    nationality: null,
     notes: null,
+    risk_flag: false,
+    vip: false,
+    created_at: "2024-02-08T16:00:00.000Z",
   },
   {
     name: "Eclipse Capital Fund",
     company: "Eclipse Capital Fund",
     email: "eclipse@eclipsefund.com",
     phone: "+1 (310) 555-0599",
-    vip: false,
-    risk_flag: true,
+    nationality: null,
     notes: "Flagged for late payments in 2024. Require deposit upfront.",
+    risk_flag: true,
+    vip: false,
+    created_at: "2024-09-05T13:00:00.000Z",
   },
-] as const;
+];
 
+/** Aircraft seed with created_at for when each joined the fleet (staggered 2020–2024). */
 const AIRCRAFT_SEED = [
   {
     tail_number: "N350KA",
@@ -83,6 +108,7 @@ const AIRCRAFT_SEED = [
     cruise_speed_kts: 310,
     fuel_burn_gph: 85,
     daily_available_hours: 10,
+    created_at: "2020-06-15T10:00:00.000Z",
   },
   {
     tail_number: "N300PE",
@@ -95,6 +121,7 @@ const AIRCRAFT_SEED = [
     cruise_speed_kts: 453,
     fuel_burn_gph: 120,
     daily_available_hours: 10,
+    created_at: "2021-02-01T09:00:00.000Z",
   },
   {
     tail_number: "N3CJ",
@@ -107,6 +134,7 @@ const AIRCRAFT_SEED = [
     cruise_speed_kts: 416,
     fuel_burn_gph: 110,
     daily_available_hours: 10,
+    created_at: "2021-11-10T14:00:00.000Z",
   },
   {
     tail_number: "N400XL",
@@ -119,6 +147,7 @@ const AIRCRAFT_SEED = [
     cruise_speed_kts: 441,
     fuel_burn_gph: 175,
     daily_available_hours: 10,
+    created_at: "2022-04-20T11:00:00.000Z",
   },
   {
     tail_number: "N350CH",
@@ -131,6 +160,7 @@ const AIRCRAFT_SEED = [
     cruise_speed_kts: 470,
     fuel_burn_gph: 220,
     daily_available_hours: 10,
+    created_at: "2022-12-01T08:00:00.000Z",
   },
   {
     tail_number: "N600LG",
@@ -143,6 +173,7 @@ const AIRCRAFT_SEED = [
     cruise_speed_kts: 476,
     fuel_burn_gph: 280,
     daily_available_hours: 10,
+    created_at: "2023-05-18T13:00:00.000Z",
   },
   {
     tail_number: "N900FL",
@@ -155,6 +186,7 @@ const AIRCRAFT_SEED = [
     cruise_speed_kts: 480,
     fuel_burn_gph: 290,
     daily_available_hours: 10,
+    created_at: "2023-10-05T10:00:00.000Z",
   },
   {
     tail_number: "N650GS",
@@ -167,8 +199,69 @@ const AIRCRAFT_SEED = [
     cruise_speed_kts: 488,
     fuel_burn_gph: 360,
     daily_available_hours: 12,
+    created_at: "2024-03-22T09:00:00.000Z",
   },
-] as const;
+];
+
+/** Crew seed: run once with aircraft. created_at staggered 2021–2024. */
+const CREW_SEED = [
+  {
+    name: "Captain David Holt",
+    role: "captain",
+    ratings: ["Citation XLS+", "Challenger 350", "Citation Latitude"],
+    created_at: "2022-03-01T08:00:00.000Z",
+    available_hours_per_day: 10,
+  },
+  {
+    name: "FO Sarah Kimura",
+    role: "first_officer",
+    ratings: ["Citation XLS+", "Citation Latitude"],
+    created_at: "2022-08-15T09:00:00.000Z",
+    available_hours_per_day: 10,
+  },
+  {
+    name: "Captain Luis Herrera",
+    role: "captain",
+    ratings: ["Citation CJ3", "Phenom 300E"],
+    created_at: "2023-02-01T10:00:00.000Z",
+    available_hours_per_day: 10,
+  },
+  {
+    name: "FO Megan Tran",
+    role: "first_officer",
+    ratings: ["Citation CJ3", "Phenom 300E"],
+    created_at: "2023-02-01T10:00:00.000Z",
+    available_hours_per_day: 10,
+  },
+  {
+    name: "FA Nicole Osei",
+    role: "flight_attendant",
+    ratings: null,
+    created_at: "2023-06-15T11:00:00.000Z",
+    available_hours_per_day: 10,
+  },
+  {
+    name: "Captain Ray Morales",
+    role: "captain",
+    ratings: ["Hawker 800XP", "Challenger 605"],
+    created_at: "2021-11-10T08:00:00.000Z",
+    available_hours_per_day: 8,
+  },
+  {
+    name: "FO Anita Patel",
+    role: "first_officer",
+    ratings: ["Hawker 800XP"],
+    created_at: "2022-05-20T14:00:00.000Z",
+    available_hours_per_day: 10,
+  },
+  {
+    name: "Captain Erik Johansson",
+    role: "captain",
+    ratings: ["Gulfstream G450", "Gulfstream G650ER"],
+    created_at: "2020-09-01T09:00:00.000Z",
+    available_hours_per_day: 10,
+  },
+];
 
 // ─── History seed helpers (same logic as seed-history) ───────────────────────
 
@@ -287,10 +380,36 @@ export async function POST() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
+  // Skip if already seeded (keep existing data; use migrations for schema).
+  const { count } = await supabase
+    .from("clients")
+    .select("id", { count: "exact", head: true });
+  if (count != null && count > 0) {
+    return NextResponse.json({
+      message: "Already seeded; no changes. Use migrations for schema.",
+      skipped: true,
+    });
+  }
+
   // ── 1. Insert clients ──────────────────────────────────────────────────────
+  const clientRows = CLIENTS.map((c) => {
+    const name = String(c.name).trim();
+    if (!name) throw new Error("Client seed entry has empty name");
+    return {
+      name,
+      company: c.company ?? null,
+      email: c.email ?? null,
+      phone: c.phone ?? null,
+      nationality: c.nationality ?? null,
+      notes: c.notes ?? null,
+      risk_flag: Boolean(c.risk_flag),
+      vip: Boolean(c.vip),
+      created_at: c.created_at,
+    };
+  });
   const { data: insertedClients, error: clientError } = await supabase
     .from("clients")
-    .insert(CLIENTS.map((c) => ({ ...c })))
+    .insert(clientRows)
     .select("id, email");
 
   if (clientError) {
@@ -304,9 +423,18 @@ export async function POST() {
     .from("aircraft")
     .insert(
       AIRCRAFT_SEED.map((a) => ({
-        ...a,
-        status: "active",
+        tail_number: a.tail_number,
+        category: a.category,
+        home_base_icao: a.home_base_icao,
+        pax_capacity: a.pax_capacity,
+        range_nm: a.range_nm,
+        has_wifi: a.has_wifi,
         has_bathroom: a.has_bathroom,
+        cruise_speed_kts: a.cruise_speed_kts,
+        fuel_burn_gph: a.fuel_burn_gph,
+        daily_available_hours: a.daily_available_hours,
+        status: "active",
+        created_at: a.created_at,
       })),
     )
     .select("id, category, tail_number");
@@ -317,6 +445,21 @@ export async function POST() {
 
   const aircraftIds = insertedAircraft.map((a) => a.id);
 
+  // ── 2b. Insert crew ────────────────────────────────────────────────────────
+  const crewRows = CREW_SEED.map((c) => ({
+    name: c.name,
+    role: c.role,
+    ratings: c.ratings ?? null,
+    created_at: c.created_at,
+    available_hours_per_day: c.available_hours_per_day,
+    duty_hours_this_week: 0,
+    last_duty_end: null,
+  }));
+  const { error: crewError } = await supabase.from("crew").insert(crewRows);
+  if (crewError) {
+    return NextResponse.json({ error: crewError.message }, { status: 500 });
+  }
+
   // ── 3. Insert pipeline trips + quotes ──────────────────────────────────────
   const now = new Date();
 
@@ -325,6 +468,10 @@ export async function POST() {
     const depDate = new Date(now);
     depDate.setDate(depDate.getDate() - s.daysAgo);
     const dateStr = depDate.toISOString().slice(0, 10);
+    // Trip created when request came in (daysAgo ago)
+    const createdAt = new Date(
+      now.getTime() - s.daysAgo * 86400000,
+    ).toISOString();
 
     return {
       id: crypto.randomUUID(),
@@ -347,6 +494,7 @@ export async function POST() {
       flexibility_hours: 1,
       flexibility_hours_return: 0,
       preferred_category: route.category,
+      created_at: createdAt,
       _status: s.status,
       _price: s.price,
       _margin: s.margin,
@@ -416,6 +564,10 @@ export async function POST() {
       wonLostReason = "Client chose competitor — price sensitivity";
     }
 
+    const quoteCreatedAt = new Date(
+      now.getTime() - t._daysAgo * 86400000,
+    ).toISOString();
+
     return {
       trip_id: t.id,
       client_id: t.client_id,
@@ -438,6 +590,7 @@ export async function POST() {
       actual_block_hours: actualBlockHours,
       actual_total_hours: actualBlockHours,
       won_lost_reason: wonLostReason,
+      created_at: quoteCreatedAt,
       _price: t._price,
       _margin: t._margin,
     };
@@ -500,6 +653,7 @@ export async function POST() {
   // ── 5. Seed 6 weeks of flight history ─────────────────────────────────────
   const historyTrips: {
     id: string;
+    client_id: string;
     legs: Json;
     trip_type: string;
     pax_adults: number;
@@ -510,10 +664,12 @@ export async function POST() {
     bathroom_required: boolean;
     flexibility_hours: number;
     flexibility_hours_return: number;
+    created_at: string;
   }[] = [];
 
   const historyQuotes: {
     trip_id: string;
+    client_id: string;
     aircraft_id: string;
     status: string;
     chosen_aircraft_category: string;
@@ -528,12 +684,15 @@ export async function POST() {
     margin_pct: number;
     currency: string;
     version: number;
+    created_at: string;
   }[] = [];
 
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const historyStart = new Date(today);
   historyStart.setUTCDate(historyStart.getUTCDate() - 42);
+
+  let historyTripIndex = 0;
 
   for (const plane of insertedAircraft) {
     const baseline = CATEGORY_BASELINE[plane.category] ?? 3.0;
@@ -546,6 +705,9 @@ export async function POST() {
       const numFlights = roll < 0.25 ? 0 : roll < 0.75 ? 1 : 2;
 
       for (let f = 0; f < numFlights; f++) {
+        const clientId = clientIds[historyTripIndex % clientIds.length]!;
+        historyTripIndex += 1;
+
         const flightHours =
           Math.round(rand(baseline * 0.65, baseline * 1.35) * dowMult * 10) /
           10;
@@ -562,6 +724,7 @@ export async function POST() {
 
         historyTrips.push({
           id: tripId,
+          client_id: clientId,
           legs: [
             {
               from_icao: route[0] as string,
@@ -579,10 +742,12 @@ export async function POST() {
           bathroom_required: false,
           flexibility_hours: 0,
           flexibility_hours_return: 0,
+          created_at: departure.toISOString(),
         });
 
         historyQuotes.push({
           trip_id: tripId,
+          client_id: clientId,
           aircraft_id: plane.id,
           status: "completed",
           chosen_aircraft_category: plane.category,
@@ -597,6 +762,7 @@ export async function POST() {
           margin_pct: 0.15,
           currency: "USD",
           version: 1,
+          created_at: departure.toISOString(),
         });
       }
 

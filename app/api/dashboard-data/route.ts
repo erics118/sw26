@@ -8,6 +8,7 @@ type QuoteRow = {
   confirmed_at: string | null;
   clients: { name: string } | null;
   trips: { legs: Array<{ from_icao: string; to_icao: string }> } | null;
+  aircraft: { id: string; tail_number: string } | null;
 };
 
 export async function GET() {
@@ -16,23 +17,21 @@ export async function GET() {
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   try {
-    // Fetch quotes
+    // Fetch quotes (with aircraft so dashboard can show tail per quote)
     const { data: rawQuotes } = await supabase
       .from("quotes")
       .select(
-        "id, status, created_at, confirmed_at, clients(name), trips(legs)",
+        "id, status, created_at, confirmed_at, clients(name), trips(legs), aircraft(id, tail_number)",
       )
       .order("created_at", { ascending: false })
       .limit(20);
 
     const quotes = rawQuotes as QuoteRow[] | null;
 
-    // Fetch today's trips
+    // Fetch today's trips (legs is a column on trips, not a nested relation)
     const { data: trips } = await supabase
       .from("trips")
-      .select(
-        "id, requested_departure_window_start, clients(name), trips(legs)",
-      )
+      .select("id, requested_departure_window_start, clients(name), legs")
       .gte(
         "requested_departure_window_start",
         new Date(new Date().setHours(0, 0, 0, 0)).toISOString(),
@@ -42,10 +41,10 @@ export async function GET() {
         new Date(new Date().setHours(23, 59, 59, 999)).toISOString(),
       );
 
-    // Fetch crew
+    // Fetch crew (no status column on crew table)
     const { data: crews } = await supabase
       .from("crew")
-      .select("id, name, status")
+      .select("id, name, role")
       .limit(5);
 
     // Calculate KPIs

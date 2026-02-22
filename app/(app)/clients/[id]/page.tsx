@@ -105,7 +105,7 @@ export default async function ClientDetailPage({ params }: PageProps) {
               </div>
             ) : (
               <table className="w-full text-sm">
-                <thead>
+                <thead className="sticky top-0 z-10 bg-zinc-900">
                   <tr className="border-b border-zinc-800">
                     {["ID", "Route", "Status", "Date"].map((h) => (
                       <th
@@ -216,7 +216,9 @@ export default async function ClientDetailPage({ params }: PageProps) {
               <div className="flex justify-between">
                 <span className="text-zinc-600">Member since</span>
                 <span className="text-xs text-zinc-500">
-                  {new Date(client.created_at).toLocaleDateString()}
+                  {client.created_at
+                    ? new Date(client.created_at).toLocaleDateString()
+                    : "—"}
                 </span>
               </div>
               <div className="flex justify-between">
