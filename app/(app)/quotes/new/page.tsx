@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
 import Card, { CardHeader, CardTitle } from "@/components/ui/Card";
 import Badge from "@/components/ui/Badge";
+import CostBreakdown from "@/components/ui/CostBreakdown";
 import { formatFlightTime } from "@/lib/format";
 import Link from "next/link";
 import RoutePlanDetail from "@/components/Quotes/RoutePlanDetail";
@@ -40,6 +41,7 @@ interface Aircraft {
 }
 
 type OptimizationMode = "cost" | "time" | "balanced";
+type Step = "configure" | "preview";
 
 interface PreviewResult {
   aircraft_id: string;
@@ -61,6 +63,45 @@ interface PreviewResult {
   warnings?: string[];
 }
 
+interface PricingCosts {
+  fuel_cost: number;
+  fbo_fees: number;
+  repositioning_cost: number;
+  repositioning_hours: number;
+  permit_fees: number;
+  crew_overnight_cost: number;
+  catering_cost: number;
+  peak_day_surcharge: number;
+  subtotal: number;
+  margin_amount: number;
+  tax: number;
+  total: number;
+}
+
+interface QuotePricingResult {
+  costs: PricingCosts;
+  aircraft: {
+    tail_number: string;
+    category: string;
+    range_nm: number;
+    pax_capacity: number;
+  };
+  trip: {
+    legs: TripLeg[];
+    trip_type: string;
+    pax_adults: number;
+  };
+  optimization_mode: string;
+}
+
+function fmt(n: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
 function NewQuotePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -76,12 +117,19 @@ function NewQuotePageContent() {
   const [marginPct, setMarginPct] = useState(20);
   const [notes, setNotes] = useState("");
 
+  const [step, setStep] = useState<Step>("configure");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [previewLoading, setPreviewLoading] = useState(false);
   const [preview, setPreview] = useState<PreviewResult | null>(null);
   const [previewError, setPreviewError] = useState("");
   const previewFetchedRef = useRef(false);
+
+  // Quote pricing preview state (step 2)
+  const [quotePricing, setQuotePricing] = useState<QuotePricingResult | null>(
+    null,
+  );
+  const [loadingPricing, setLoadingPricing] = useState(false);
 
   const [optimizationMode, setOptimizationMode] =
     useState<OptimizationMode>("balanced");
@@ -98,8 +146,6 @@ function NewQuotePageContent() {
 
   useEffect(() => {
     async function load() {
-      // Preview flow: load just the specific trip by ID.
-      // Manual flow: load unquoted trips only (left join filter).
       const tripsQuery = isPreviewFlow
         ? supabase
             .from("trips")
@@ -147,7 +193,7 @@ function NewQuotePageContent() {
     void load();
   }, [supabase, isPreviewFlow, tripIdParam]);
 
-  // Preview flow: fetch aircraft + 3 plans when trip_id in URL
+  // Preview flow: fetch aircraft + 3 route plans when trip_id in URL
   useEffect(() => {
     if (!tripIdParam || previewFetchedRef.current) return;
     previewFetchedRef.current = true;
@@ -205,6 +251,49 @@ function NewQuotePageContent() {
   const selectedPlan =
     isPreviewFlow && preview ? (preview[optimizationMode] ?? null) : routePlan;
 
+  const canSave =
+    !!selectedTripId &&
+    (isPreviewFlow
+      ? !!preview && !!selectedPlan?.plan_id
+      : !!selectedAircraftId);
+
+  // Fetch pricing preview and advance to step 2
+  async function handlePreviewQuote() {
+    if (!canSave) return;
+    setLoadingPricing(true);
+    setError("");
+    try {
+      const body: Record<string, unknown> = {
+        trip_id: selectedTripId,
+        aircraft_id: selectedAircraftId,
+        margin_pct: marginPct,
+      };
+
+      if (isPreviewFlow && preview && selectedPlan?.plan_id) {
+        body.route_plan_id = selectedPlan.plan_id;
+      } else if (selectedPlan?.cost_breakdown) {
+        body.fuel_price_override_usd =
+          selectedPlan.cost_breakdown.avg_fuel_price_usd_gal;
+      }
+
+      const res = await fetch("/api/quotes/price-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = (await res.json()) as QuotePricingResult & {
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error ?? "Pricing preview failed");
+      setQuotePricing(data);
+      setStep("preview");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoadingPricing(false);
+    }
+  }
+
   async function handleSave() {
     if (!selectedTripId) {
       setError("Select a trip.");
@@ -247,11 +336,12 @@ function NewQuotePageContent() {
     }
   }
 
-  const canSave =
-    !!selectedTripId &&
-    (isPreviewFlow
-      ? !!preview && !!selectedPlan?.plan_id
-      : !!selectedAircraftId);
+  // ─── Live margin recalculation for preview step ───────────────────────────
+  // Subtotal is fixed; only margin / tax / total change with slider.
+  const previewSubtotal = quotePricing?.costs.subtotal ?? 0;
+  const liveMarginAmount = previewSubtotal * (marginPct / 100);
+  const liveTax = (previewSubtotal + liveMarginAmount) * 0.075;
+  const liveTotal = previewSubtotal + liveMarginAmount + liveTax;
 
   if (previewLoading) {
     return (
@@ -270,6 +360,225 @@ function NewQuotePageContent() {
     );
   }
 
+  // ─── Step 2: Quote Preview ─────────────────────────────────────────────────
+  if (step === "preview" && quotePricing) {
+    const previewLegs = quotePricing.trip.legs;
+    const previewRoute =
+      previewLegs.length > 0
+        ? previewLegs
+            .map((l) => l.from_icao)
+            .concat([previewLegs[previewLegs.length - 1]?.to_icao ?? ""])
+            .join(" → ")
+        : "No legs";
+
+    return (
+      <div className="p-8">
+        {/* Header */}
+        <div className="mb-6 flex items-start justify-between">
+          <div>
+            <button
+              onClick={() => setStep("configure")}
+              className="mb-2 text-xs text-zinc-600 hover:text-zinc-400"
+            >
+              ← Back to Edit
+            </button>
+            <h1 className="text-2xl font-semibold text-zinc-100">
+              Quote Preview
+            </h1>
+            <p className="mt-1 text-sm text-zinc-600">
+              Review the quote below, adjust margin or notes, then confirm to
+              save.
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="tabnum text-2xl font-bold text-amber-400">
+              {fmt(liveTotal)}
+            </div>
+            <div className="mt-0.5 text-xs text-zinc-500">estimated total</div>
+          </div>
+        </div>
+
+        {/* Route + Aircraft summary bar */}
+        <div className="mb-6 flex flex-wrap items-center gap-4 rounded-lg border border-zinc-800 bg-zinc-900/60 px-5 py-3">
+          <span className="font-mono text-base font-semibold text-amber-400">
+            {previewRoute}
+          </span>
+          <span className="text-zinc-700">·</span>
+          <span className="text-sm text-zinc-400">
+            {quotePricing.aircraft.tail_number}
+          </span>
+          <span className="text-sm text-zinc-600 capitalize">
+            {quotePricing.aircraft.category}
+          </span>
+          <span className="text-sm text-zinc-600">
+            {quotePricing.trip.pax_adults} pax
+          </span>
+          <span className="ml-auto">
+            <Badge variant="amber" size="sm">
+              {quotePricing.optimization_mode}-optimized
+            </Badge>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-3 gap-6">
+          {/* Left: cost breakdown + legs */}
+          <div className="col-span-2 space-y-5">
+            <Card>
+              <CardHeader>
+                <CardTitle>Cost Breakdown</CardTitle>
+                <span className="tabnum text-lg font-bold text-amber-400">
+                  {fmt(liveTotal)}
+                </span>
+              </CardHeader>
+              <CostBreakdown
+                fuelCost={quotePricing.costs.fuel_cost}
+                fboFees={quotePricing.costs.fbo_fees}
+                repositioningCost={quotePricing.costs.repositioning_cost}
+                repositioningHours={quotePricing.costs.repositioning_hours}
+                permitFees={quotePricing.costs.permit_fees}
+                crewOvernightCost={quotePricing.costs.crew_overnight_cost}
+                cateringCost={quotePricing.costs.catering_cost}
+                peakDaySurcharge={quotePricing.costs.peak_day_surcharge}
+                subtotal={previewSubtotal}
+                marginPct={marginPct}
+                marginAmount={liveMarginAmount}
+                tax={liveTax}
+                total={liveTotal}
+              />
+            </Card>
+
+            {/* Trip legs */}
+            {previewLegs.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Legs</CardTitle>
+                </CardHeader>
+                <div className="space-y-2">
+                  {previewLegs.map((leg, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center gap-4 rounded-md bg-zinc-800/40 px-4 py-3"
+                    >
+                      <span className="font-mono text-lg font-semibold text-amber-400">
+                        {leg.from_icao}
+                      </span>
+                      <span className="text-zinc-600">→</span>
+                      <span className="font-mono text-lg font-semibold text-amber-400">
+                        {leg.to_icao}
+                      </span>
+                      <span className="ml-auto font-mono text-xs text-zinc-500">
+                        {leg.date} {leg.time}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
+          </div>
+
+          {/* Right sidebar: margin, notes, confirm */}
+          <div className="space-y-5">
+            <Card>
+              <CardHeader>
+                <CardTitle>Aircraft</CardTitle>
+              </CardHeader>
+              <div className="space-y-1.5 text-sm">
+                <p className="font-mono text-base font-semibold text-zinc-200">
+                  {quotePricing.aircraft.tail_number}
+                </p>
+                <p className="text-zinc-500 capitalize">
+                  {quotePricing.aircraft.category}
+                </p>
+                <p className="text-zinc-500">
+                  {quotePricing.aircraft.range_nm.toLocaleString()} nm range ·{" "}
+                  {quotePricing.aircraft.pax_capacity} pax
+                </p>
+              </div>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Margin</CardTitle>
+              </CardHeader>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min={5}
+                    max={40}
+                    step={1}
+                    value={marginPct}
+                    onChange={(e) => setMarginPct(parseInt(e.target.value))}
+                    className="flex-1 accent-amber-400"
+                  />
+                  <span className="tabnum w-10 text-right text-lg font-bold text-amber-400">
+                    {marginPct}%
+                  </span>
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="flex justify-between text-zinc-600">
+                    <span>Subtotal</span>
+                    <span className="tabnum">{fmt(previewSubtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-600">
+                    <span>Margin</span>
+                    <span className="tabnum">+{fmt(liveMarginAmount)}</span>
+                  </div>
+                  <div className="flex justify-between text-zinc-600">
+                    <span>Tax (7.5%)</span>
+                    <span className="tabnum">+{fmt(liveTax)}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-zinc-800 pt-1 font-medium text-zinc-300">
+                    <span>Total</span>
+                    <span className="tabnum text-amber-400">
+                      {fmt(liveTotal)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Notes</CardTitle>
+              </CardHeader>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional notes for this quote…"
+                rows={3}
+                className="w-full resize-none rounded border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-zinc-300 placeholder-zinc-700 focus:border-amber-400 focus:outline-none"
+              />
+            </Card>
+
+            {error && (
+              <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-400">
+                {error}
+              </div>
+            )}
+
+            <Button
+              onClick={() => void handleSave()}
+              loading={saving}
+              size="lg"
+              className="w-full justify-center"
+            >
+              Confirm &amp; Save →
+            </Button>
+
+            <button
+              onClick={() => setStep("configure")}
+              className="w-full text-center text-xs text-zinc-600 hover:text-zinc-400"
+            >
+              ← Back to Edit
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Step 1: Configure ─────────────────────────────────────────────────────
   return (
     <div className="p-8">
       <div className="mb-6">
@@ -278,7 +587,7 @@ function NewQuotePageContent() {
           {isPreviewFlow
             ? previewError
               ? "Preview failed. Select options below to continue."
-              : "Choose a route option, adjust margin, and save."
+              : "Choose a route option, adjust margin, then preview the quote."
             : "Select a trip (and optionally an aircraft). AI will choose the best aircraft and route plan if not specified."}
         </p>
       </div>
@@ -298,7 +607,7 @@ function NewQuotePageContent() {
         </div>
       ))}
 
-      {/* Row 1: Route options (preview) or mode selector (manual) */}
+      {/* Route option cards (preview flow) */}
       {isPreviewFlow && preview && (
         <div className="mb-6 grid grid-cols-3 gap-4">
           {(["cost", "balanced", "time"] as const).map((m) => {
@@ -355,7 +664,7 @@ function NewQuotePageContent() {
         </div>
       )}
 
-      {/* Row 2: Trip/aircraft/plan detail + sidebar */}
+      {/* Trip / aircraft / route plan detail */}
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           {/* Trip */}
@@ -433,7 +742,7 @@ function NewQuotePageContent() {
             )}
           </Card>
 
-          {/* Aircraft — only when manual flow */}
+          {/* Aircraft — manual flow only */}
           {!isPreviewFlow && (
             <Card>
               <CardHeader>
@@ -484,7 +793,7 @@ function NewQuotePageContent() {
             </Card>
           )}
 
-          {/* AI-selected aircraft when preview flow */}
+          {/* AI-selected aircraft (preview flow) */}
           {isPreviewFlow && previewAircraft && (
             <Card>
               <CardHeader>
@@ -649,24 +958,16 @@ function NewQuotePageContent() {
               {error}
             </div>
           )}
+
           <Button
-            onClick={() => void handleSave()}
-            loading={saving}
+            onClick={() => void handlePreviewQuote()}
+            loading={loadingPricing}
             disabled={!canSave}
             size="lg"
             className="w-full justify-center"
           >
-            Save Quote →
+            Preview Quote →
           </Button>
-
-          {canSave && (
-            <div className="flex items-center justify-center gap-2 text-xs text-zinc-600">
-              Status will be set to{" "}
-              <Badge variant="blue" size="sm">
-                sent
-              </Badge>
-            </div>
-          )}
         </div>
       </div>
     </div>
