@@ -254,13 +254,8 @@ export default async function QuoteDetailPage({ params }: PageProps) {
                   crewOvernightCost={costs.crew_overnight_cost}
                   cateringCost={costs.catering_cost}
                   peakDaySurcharge={costs.peak_day_surcharge}
-                  subtotal={costs.subtotal}
                   marginPct={quote.margin_pct}
-                  marginAmount={costs.margin_amount}
-                  tax={costs.tax}
-                  total={costs.total}
                   currency={quote.currency}
-                  isEditable={true}
                 />
               ) : (
                 <CostBreakdown
