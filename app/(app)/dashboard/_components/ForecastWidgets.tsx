@@ -28,6 +28,7 @@ type ForecastBundle = {
       aircraft_id: string;
       tail_number: string;
       move_to_airport: string;
+      one_line_reason: string;
     }[];
   };
 };
@@ -257,7 +258,7 @@ export async function TopActionsCard() {
           Top Actions
         </h3>
         <Link
-          href="/fleet-forecasting"
+          href="/fleet-forecasting?tab=actions"
           className="text-xs text-emerald-400 hover:text-emerald-300"
         >
           View All →
@@ -272,8 +273,8 @@ export async function TopActionsCard() {
             <p className="text-xs font-semibold text-emerald-400">
               {rec.tail_number ?? rec.aircraft_id}
             </p>
-            <p className="mt-0.5 text-xs text-zinc-600">
-              → {rec.move_to_airport}
+            <p className="mt-0.5 text-xs text-zinc-500">
+              {rec.one_line_reason}
             </p>
           </div>
         ))}
