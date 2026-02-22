@@ -349,7 +349,6 @@ export type Database = {
         Row: {
           available_hours_per_day: number | null;
           created_at: string | null;
-          current_location: string | null;
           duty_hours_this_week: number | null;
           id: string;
           last_duty_end: string | null;
@@ -360,7 +359,6 @@ export type Database = {
         Insert: {
           available_hours_per_day?: number | null;
           created_at?: string | null;
-          current_location?: string | null;
           duty_hours_this_week?: number | null;
           id?: string;
           last_duty_end?: string | null;
@@ -371,7 +369,6 @@ export type Database = {
         Update: {
           available_hours_per_day?: number | null;
           created_at?: string | null;
-          current_location?: string | null;
           duty_hours_this_week?: number | null;
           id?: string;
           last_duty_end?: string | null;
