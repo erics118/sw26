@@ -94,7 +94,9 @@ export default async function DashboardPage() {
   const confirmedQuotes =
     data.recentQuotes.filter((q) => q.status === "confirmed").length || 0;
   const conversionRate =
-    sentQuotes > 0 ? Math.round((confirmedQuotes / sentQuotes) * 100) : 0;
+    sentQuotes + confirmedQuotes > 0
+      ? Math.round((confirmedQuotes / (sentQuotes + confirmedQuotes)) * 100)
+      : 0;
 
   return (
     <div className="p-8">
