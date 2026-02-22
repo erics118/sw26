@@ -7,7 +7,11 @@
       "WebFetch(domain:www.autorouter.aero)",
       "WebFetch(domain:adds-faa.opendata.arcgis.com)",
       "WebFetch(domain:ais-faa.opendata.arcgis.com)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(GIT_EDITOR=true git rebase:*)",
+      "Bash(EDITOR=\":\" git rebase:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)"
     ],
     "additionalDirectories": [
       "c:\\Users\\charl\\School\\cs_misc\\sw26\\components\\FleetForecasting"
